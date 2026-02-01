@@ -175,4 +175,154 @@
                     <div><div class="flex items-center gap-2"><span class="font-bold text-white">${h.ticker}</span><span class="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">${h.qty.toLocaleString()} shares</span></div>
                     <div class="text-xs text-zinc-500 mt-1">Avg: ${h.avgCost.toFixed(2)} • Mkt: <span class="${h.marketPrice?'text-zinc-300':'text-yellow-600'}">${(h.marketPrice||0).toFixed(2)}</span></div></div>
                     <div class="text-right"><div class="font-bold text-white">${moneyFmt.format(marketVal)}</div>
-                    <div class="text-xs font-bold ${isProfit?'text-emerald-400 bg-emerald-500/
+                    <div class="text-xs font-bold ${isProfit?'text-emerald-400 bg-emerald-500/10':'text-rose-400 bg-rose-500/10'} px-2 py-0.5 rounded-md inline-block mt-1">${isProfit?'+':''}${moneyFmt.format(pl)} (${plPct.toFixed(2)}%)</div></div>
+                    <button onclick="removeHolding('${h.ticker}')" class="ml-3 text-zinc-600 hover:text-rose-500"><i data-lucide="trash-2" width="16"></i></button>
+                </div>`);
+            });
+            const totalPL = totalVal - totalCost; const totalPLPct = totalCost>0?(totalPL/totalCost)*100:0;
+            document.getElementById('total-value').innerText = moneyFmt.format(totalVal);
+            document.getElementById('total-pl').innerText = (totalPL>=0?'+':'') + moneyFmt.format(totalPL);
+            document.getElementById('total-pl').className = `text-2xl font-black ${totalPL>=0?'text-emerald-400':'text-rose-400'}`;
+            document.getElementById('total-pl-pct').innerText = (totalPL>=0?'+':'') + totalPLPct.toFixed(2) + '%';
+            document.getElementById('total-pl-pct').className = `text-xs font-bold ${totalPL>=0?'text-emerald-500':'text-rose-500'}`;
+            document.getElementById('chart-center-count').innerText = holdings.length;
+            lucide.createIcons();
+        }
+
+        // --- BENCHMARK ---
+        function toggleLogModal() { 
+            const m = document.getElementById('modal-log'); 
+            m.classList.toggle('hidden'); m.classList.toggle('flex');
+            if(!m.classList.contains('hidden')) document.getElementById('log-date').valueAsDate = new Date();
+        }
+        function saveLog() {
+            const date = document.getElementById('log-date').value;
+            const portVal = parseFloat(document.getElementById('log-val').value);
+            const spVal = parseFloat(document.getElementById('log-sp').value);
+            if(!date || isNaN(portVal) || isNaN(spVal)) return alert("Fill all fields");
+            
+            history.push({ date, portVal, spVal });
+            history.sort((a,b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('port_history', JSON.stringify(history));
+            renderHistory(); updateCharts(); toggleLogModal();
+        }
+        function deleteLog(idx) {
+            if(confirm('Delete log?')) { history.splice(idx, 1); localStorage.setItem('port_history', JSON.stringify(history)); renderHistory(); updateCharts(); }
+        }
+        function renderHistory() {
+            const list = document.getElementById('history-list'); list.innerHTML = '';
+            if(history.length === 0) { list.innerHTML = '<p class="text-center text-xs text-zinc-600 py-4">No history recorded yet.</p>'; return; }
+            history.slice().reverse().forEach((h, i) => {
+                const realIdx = history.length - 1 - i;
+                list.insertAdjacentHTML('beforeend', `
+                <div class="flex justify-between items-center text-sm p-3 border-b border-zinc-800/50">
+                    <span class="text-zinc-500 font-mono text-xs">${h.date}</span>
+                    <div class="flex gap-4">
+                        <span class="text-emerald-400 font-bold">$${h.portVal.toLocaleString()}</span>
+                        <span class="text-blue-400 font-bold">SPX ${h.spVal}</span>
+                    </div>
+                    <button onclick="deleteLog(${realIdx})" class="text-zinc-700 hover:text-rose-500"><i data-lucide="x" width="14"></i></button>
+                </div>`);
+            });
+            lucide.createIcons();
+        }
+
+        // --- CHARTS ---
+        function updateCharts() {
+            const ctxAlloc = document.getElementById('chartAlloc').getContext('2d');
+            if (chartAllocInstance) chartAllocInstance.destroy();
+            const allocLabels = holdings.map(h => h.ticker);
+            const allocData = holdings.map(h => h.qty * (h.marketPrice || h.avgCost));
+            chartAllocInstance = new Chart(ctxAlloc, {
+                type: 'doughnut',
+                data: { labels: allocLabels, datasets: [{ data: allocData, backgroundColor: ['#10b981','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'], borderWidth: 0, hoverOffset: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+            });
+
+            const ctxBench = document.getElementById('chartBench').getContext('2d');
+            if (chartBenchInstance) chartBenchInstance.destroy();
+            if (history.length > 1) {
+                const labels = history.map(h => h.date);
+                const myData = history.map(h => h.portVal);
+                const startPort = history[0].portVal; const startSP = history[0].spVal;
+                const spData = history.map(h => (h.spVal / startSP) * startPort);
+                chartBenchInstance = new Chart(ctxBench, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'My Portfolio', data: myData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.3, pointRadius: 3 },
+                            { label: 'Market (S&P500)', data: spData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.3, pointRadius: 3 }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { labels: { color: '#9ca3af', font: {size: 10} } } }, scales: { x: { grid: { display: false }, ticks: { color: '#52525b', font: {size: 10} } }, y: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: {size: 10} } } } }
+                });
+            }
+        }
+
+        // --- ROBUST FETCH (V4) ---
+        function saveHoldings() { localStorage.setItem('port_holdings', JSON.stringify(holdings)); }
+        function toggleSettings() { const m = document.getElementById('modal-settings'); m.classList.toggle('hidden'); m.classList.toggle('flex'); document.getElementById('inp-csv-link').value = config.csvUrl; }
+        function saveSettings() { config.csvUrl = document.getElementById('inp-csv-link').value.trim(); localStorage.setItem('port_config', JSON.stringify(config)); toggleSettings(); if(config.csvUrl) refreshPrices(); }
+        
+        async function refreshPrices() {
+            if (!config.csvUrl) return alert("Set CSV Link first!");
+            const btn = document.getElementById('btn-refresh'); 
+            btn.classList.add('animate-spin');
+            
+            try {
+                let res;
+                let usedProxy = false;
+
+                // 1. Try Direct Fetch
+                try {
+                    res = await fetch(config.csvUrl);
+                    if (!res.ok) throw new Error("Direct fetch failed");
+                } catch (e) {
+                    console.warn("Direct fetch blocked, switching to Proxy...");
+                    // 2. Fallback to Proxy (AllOrigins)
+                    usedProxy = true;
+                    res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(config.csvUrl));
+                }
+
+                if (!res || !res.ok) throw new Error("Failed to fetch prices (Check CSV Link or Network)");
+                
+                const text = await res.text();
+                const rows = text.split(/\r?\n/); 
+                const headers = rows[0].split(',').map(h=>h.trim().toLowerCase());
+                
+                const idxTicker = headers.findIndex(h=>h.includes('ticker')||h.includes('symbol'));
+                const idxPrice = headers.findIndex(h=>h.includes('price')||h.includes('close'));
+                
+                if (idxTicker===-1||idxPrice===-1) throw new Error("CSV must have 'Ticker' and 'Price' columns");
+                
+                let cnt = 0;
+                for(let i=1; i<rows.length; i++) {
+                    const c = rows[i].split(','); if(c.length<=idxPrice) continue;
+                    const tk = c[idxTicker].trim().toUpperCase().replace(/['"]+/g,''); 
+                    const pr = parseFloat(c[idxPrice].replace(/['"$]+/g,''));
+                    if(tk && !isNaN(pr)) {
+                        const h = holdings.find(x => x.ticker===tk || tk.includes(':'+x.ticker));
+                        if(h) { h.marketPrice = pr; cnt++; }
+                    }
+                }
+                saveHoldings(); renderHoldings(); updateCharts(); 
+                document.getElementById('last-updated').innerText = 'Updated: '+new Date().toLocaleTimeString() + (usedProxy ? ' (via Proxy)' : '');
+                if(cnt===0) alert("CSV loaded but no tickers matched.");
+
+            } catch(e) { 
+                alert("Error: "+e.message); 
+            } finally { 
+                btn.classList.remove('animate-spin'); 
+            }
+        }
+        
+        function switchTab(t) {
+            document.getElementById('view-allocation').classList.toggle('hidden', t!=='allocation');
+            document.getElementById('view-benchmark').classList.toggle('hidden', t!=='benchmark');
+            document.getElementById('btn-alloc').className = t==='allocation'?"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm":"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+            document.getElementById('btn-bench').className = t==='benchmark'?"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm":"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+        }
+    </script>
+</body>
+</html>
