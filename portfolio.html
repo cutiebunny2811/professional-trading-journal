@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Port & Bench</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input, button { outline: none; }
+        body { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 antialiased min-h-screen font-sans selection:bg-emerald-500/30 pb-20">
+
+    <div class="max-w-xl mx-auto p-4 space-y-6 fade-in">
+        
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-emerald-500 to-teal-600 p-2.5 rounded-xl shadow-lg shadow-emerald-900/20">
+                    <i data-lucide="pie-chart" class="text-white w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight">Port & Bench</h1>
+                    <p class="text-xs text-zinc-500">Tracking & Performance</p>
+                </div>
+            </div>
+            <button onclick="toggleSettings()" class="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="flex p-1 bg-zinc-900/80 rounded-xl border border-zinc-800">
+            <button onclick="switchTab('allocation')" id="btn-alloc" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm">Allocation</button>
+            <button onclick="switchTab('benchmark')" id="btn-bench" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300">Benchmark</button>
+        </div>
+
+        <div id="view-allocation" class="space-y-5">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
+                    <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1">Portfolio Value</p>
+                    <div class="flex items-baseline gap-1">
+                        <h2 id="total-value" class="text-2xl font-black text-white">$0.00</h2>
+                        <button onclick="refreshPrices()" id="btn-refresh" class="text-emerald-500 hover:text-emerald-400"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    </div>
+                    <p class="text-[10px] text-zinc-600 mt-1" id="last-updated">Tap to sync</p>
+                </div>
+                <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
+                    <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1">Total P/L</p>
+                    <h2 id="total-pl" class="text-2xl font-black text-zinc-500">$0.00</h2>
+                    <p id="total-pl-pct" class="text-xs font-bold text-zinc-600">0.00%</p>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-4 flex justify-center items-center relative h-64">
+                <canvas id="chartAlloc"></canvas>
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span class="text-xs text-zinc-500 font-bold">ASSETS</span>
+                    <span id="chart-center-count" class="text-2xl font-black text-white">0</span>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4 space-y-3">
+                <div class="flex items-center gap-2 mb-2"><i data-lucide="plus-circle" class="w-4 h-4 text-emerald-500"></i><span class="text-sm font-bold text-white">Add / DCA Stock</span></div>
+                <div class="grid grid-cols-4 gap-2">
+                    <input type="text" id="inp-ticker" placeholder="Ticker" class="col-span-4 bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-emerald-500 uppercase">
+                    <input type="number" id="inp-qty" placeholder="Qty" class="col-span-2 bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-emerald-500">
+                    <input type="number" id="inp-price" placeholder="Cost Price" class="col-span-2 bg-black border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm focus:border-emerald-500">
+                </div>
+                <button onclick="addHolding()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-900/20">Save Transaction</button>
+            </div>
+
+            <div id="holdings-list" class="space-y-2 pb-10"></div>
+        </div>
+
+        <div id="view-benchmark" class="hidden space-y-5">
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="line-chart" class="w-4 h-4 text-blue-400"></i> vs S&P 500</h3>
+                    <button onclick="toggleLogModal()" class="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-500/20 transition-colors">+ Log Data</button>
+                </div>
+                <div class="h-64 w-full relative">
+                    <canvas id="chartBench"></canvas>
+                </div>
+            </div>
+
+            <div id="history-list" class="space-y-2 pb-10">
+                <p class="text-center text-xs text-zinc-600 py-4">Add at least 2 logs to see the chart comparison.</p>
+            </div>
+        </div>
+
+        <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+            <div class="bg-zinc-900 w-full max-w-sm rounded-2xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
+                <h3 class="text-lg font-bold text-white">Settings</h3>
+                <div>
+                    <label class="text-xs text-zinc-500 uppercase font-bold block mb-2">Google Sheet CSV Link</label>
+                    <textarea id="inp-csv-link" rows="3" placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300 focus:border-emerald-500 resize-none"></textarea>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleSettings()" class="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-400 text-sm font-bold">Cancel</button>
+                    <button onclick="saveSettings()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-log" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+            <div class="bg-zinc-900 w-full max-w-sm rounded-2xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
+                <div class="flex justify-between items-center"><h3 class="text-lg font-bold text-white">Log History</h3><button onclick="toggleLogModal()"><i data-lucide="x" class="text-zinc-500 w-5 h-5"></i></button></div>
+                <div class="space-y-3">
+                    <div><label class="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Date</label><input type="date" id="log-date" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm"></div>
+                    <div><label class="text-[10px] text-zinc-500 uppercase font-bold block mb-1">My Portfolio Value ($)</label><input type="number" id="log-val" placeholder="0.00" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm text-emerald-400 font-bold"></div>
+                    <div><label class="text-[10px] text-zinc-500 uppercase font-bold block mb-1">S&P 500 Index Price</label><input type="number" id="log-sp" placeholder="e.g. 4500" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white text-sm text-blue-400 font-bold"></div>
+                </div>
+                <button onclick="saveLog()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg shadow-blue-900/20">Record Snapshot</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        let holdings = JSON.parse(localStorage.getItem('port_holdings')) || [];
+        let history = JSON.parse(localStorage.getItem('port_history')) || [];
+        let config = JSON.parse(localStorage.getItem('port_config')) || { csvUrl: '' };
+        
+        let chartAllocInstance = null;
+        let chartBenchInstance = null;
+
+        const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+        // INIT
+        renderHoldings();
+        renderHistory();
+        updateCharts();
+
+        // --- ALLOCATION ---
+        function addHolding() {
+            const ticker = document.getElementById('inp-ticker').value.toUpperCase().trim();
+            const qty = parseFloat(document.getElementById('inp-qty').value);
+            const cost = parseFloat(document.getElementById('inp-price').value);
+            if (!ticker || isNaN(qty) || isNaN(cost)) return alert("Please fill all fields");
+
+            const existing = holdings.find(h => h.ticker === ticker);
+            if (existing) {
+                const totalCost = (existing.qty * existing.avgCost) + (qty * cost);
+                const totalQty = existing.qty + qty;
+                existing.qty = totalQty;
+                existing.avgCost = totalCost / totalQty;
+            } else {
+                holdings.push({ ticker, qty, avgCost: cost, marketPrice: cost });
+            }
+            saveHoldings(); renderHoldings(); updateCharts();
+            document.getElementById('inp-ticker').value = ''; document.getElementById('inp-qty').value = ''; document.getElementById('inp-price').value = '';
+        }
+        function removeHolding(ticker) {
+            if(confirm('Delete ' + ticker + '?')) { holdings = holdings.filter(h => h.ticker !== ticker); saveHoldings(); renderHoldings(); updateCharts(); }
+        }
+        function renderHoldings() {
+            const list = document.getElementById('holdings-list'); list.innerHTML = '';
+            let totalVal = 0; let totalCost = 0;
+            holdings.forEach(h => {
+                const marketVal = h.qty * (h.marketPrice || h.avgCost); const costVal = h.qty * h.avgCost;
+                const pl = marketVal - costVal; const plPct = (pl / costVal) * 100;
+                totalVal += marketVal; totalCost += costVal;
+                const isProfit = pl >= 0;
+                list.insertAdjacentHTML('beforeend', `
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex justify-between items-center">
+                    <div><div class="flex items-center gap-2"><span class="font-bold text-white">${h.ticker}</span><span class="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">${h.qty.toLocaleString()} shares</span></div>
+                    <div class="text-xs text-zinc-500 mt-1">Avg: ${h.avgCost.toFixed(2)} • Mkt: <span class="${h.marketPrice?'text-zinc-300':'text-yellow-600'}">${(h.marketPrice||0).toFixed(2)}</span></div></div>
+                    <div class="text-right"><div class="font-bold text-white">${moneyFmt.format(marketVal)}</div>
+                    <div class="text-xs font-bold ${isProfit?'text-emerald-400 bg-emerald-500/10':'text-rose-400 bg-rose-500/10'} px-2 py-0.5 rounded-md inline-block mt-1">${isProfit?'+':''}${moneyFmt.format(pl)} (${plPct.toFixed(2)}%)</div></div>
+                    <button onclick="removeHolding('${h.ticker}')" class="ml-3 text-zinc-600 hover:text-rose-500"><i data-lucide="trash-2" width="16"></i></button>
+                </div>`);
+            });
+            const totalPL = totalVal - totalCost; const totalPLPct = totalCost>0?(totalPL/totalCost)*100:0;
+            document.getElementById('total-value').innerText = moneyFmt.format(totalVal);
+            document.getElementById('total-pl').innerText = (totalPL>=0?'+':'') + moneyFmt.format(totalPL);
+            document.getElementById('total-pl').className = `text-2xl font-black ${totalPL>=0?'text-emerald-400':'text-rose-400'}`;
+            document.getElementById('total-pl-pct').innerText = (totalPL>=0?'+':'') + totalPLPct.toFixed(2) + '%';
+            document.getElementById('total-pl-pct').className = `text-xs font-bold ${totalPL>=0?'text-emerald-500':'text-rose-500'}`;
+            document.getElementById('chart-center-count').innerText = holdings.length;
+            lucide.createIcons();
+        }
+
+        // --- BENCHMARK ---
+        function toggleLogModal() { 
+            const m = document.getElementById('modal-log'); 
+            m.classList.toggle('hidden'); m.classList.toggle('flex');
+            if(!m.classList.contains('hidden')) document.getElementById('log-date').valueAsDate = new Date();
+        }
+        function saveLog() {
+            const date = document.getElementById('log-date').value;
+            const portVal = parseFloat(document.getElementById('log-val').value);
+            const spVal = parseFloat(document.getElementById('log-sp').value);
+            if(!date || isNaN(portVal) || isNaN(spVal)) return alert("Fill all fields");
+            
+            history.push({ date, portVal, spVal });
+            history.sort((a,b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('port_history', JSON.stringify(history));
+            renderHistory(); updateCharts(); toggleLogModal();
+        }
+        function deleteLog(idx) {
+            if(confirm('Delete log?')) { history.splice(idx, 1); localStorage.setItem('port_history', JSON.stringify(history)); renderHistory(); updateCharts(); }
+        }
+        function renderHistory() {
+            const list = document.getElementById('history-list'); list.innerHTML = '';
+            if(history.length === 0) { list.innerHTML = '<p class="text-center text-xs text-zinc-600 py-4">No history recorded yet.</p>'; return; }
+            history.slice().reverse().forEach((h, i) => {
+                const realIdx = history.length - 1 - i;
+                list.insertAdjacentHTML('beforeend', `
+                <div class="flex justify-between items-center text-sm p-3 border-b border-zinc-800/50">
+                    <span class="text-zinc-500 font-mono text-xs">${h.date}</span>
+                    <div class="flex gap-4">
+                        <span class="text-emerald-400 font-bold">$${h.portVal.toLocaleString()}</span>
+                        <span class="text-blue-400 font-bold">SPX ${h.spVal}</span>
+                    </div>
+                    <button onclick="deleteLog(${realIdx})" class="text-zinc-700 hover:text-rose-500"><i data-lucide="x" width="14"></i></button>
+                </div>`);
+            });
+            lucide.createIcons();
+        }
+
+        // --- CHARTS ---
+        function updateCharts() {
+            // Alloc
+            const ctxAlloc = document.getElementById('chartAlloc').getContext('2d');
+            if (chartAllocInstance) chartAllocInstance.destroy();
+            const allocLabels = holdings.map(h => h.ticker);
+            const allocData = holdings.map(h => h.qty * (h.marketPrice || h.avgCost));
+            chartAllocInstance = new Chart(ctxAlloc, {
+                type: 'doughnut',
+                data: { labels: allocLabels, datasets: [{ data: allocData, backgroundColor: ['#10b981','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'], borderWidth: 0, hoverOffset: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+            });
+
+            // Bench
+            const ctxBench = document.getElementById('chartBench').getContext('2d');
+            if (chartBenchInstance) chartBenchInstance.destroy();
+            
+            if (history.length > 1) {
+                const labels = history.map(h => h.date);
+                const myData = history.map(h => h.portVal);
+                
+                // Normalize SP500 to start at same capital as Portfolio
+                const startPort = history[0].portVal;
+                const startSP = history[0].spVal;
+                const spData = history.map(h => (h.spVal / startSP) * startPort);
+
+                chartBenchInstance = new Chart(ctxBench, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'My Portfolio', data: myData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.3, pointRadius: 3 },
+                            { label: 'Market (S&P500)', data: spData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.3, pointRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: { legend: { labels: { color: '#9ca3af', font: {size: 10} } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#52525b', font: {size: 10} } },
+                            y: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: {size: 10} } }
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- CSV & UTILS ---
+        function saveHoldings() { localStorage.setItem('port_holdings', JSON.stringify(holdings)); }
+        function toggleSettings() { const m = document.getElementById('modal-settings'); m.classList.toggle('hidden'); m.classList.toggle('flex'); document.getElementById('inp-csv-link').value = config.csvUrl; }
+        function saveSettings() { config.csvUrl = document.getElementById('inp-csv-link').value.trim(); localStorage.setItem('port_config', JSON.stringify(config)); toggleSettings(); if(config.csvUrl) refreshPrices(); }
+        async function refreshPrices() {
+            if (!config.csvUrl) return alert("Set CSV Link first!");
+            const btn = document.getElementById('btn-refresh'); btn.classList.add('animate-spin');
+            try {
+                const res = await fetch(config.csvUrl); const text = await res.text();
+                const rows = text.split(/\r?\n/); const headers = rows[0].split(',').map(h=>h.trim().toLowerCase());
+                const idxTicker = headers.findIndex(h=>h.includes('ticker')||h.includes('symbol'));
+                const idxPrice = headers.findIndex(h=>h.includes('price')||h.includes('close'));
+                if (idxTicker===-1||idxPrice===-1) throw new Error("Check CSV headers");
+                
+                let cnt = 0;
+                for(let i=1; i<rows.length; i++) {
+                    const c = rows[i].split(','); if(c.length<=idxPrice) continue;
+                    const tk = c[idxTicker].trim().toUpperCase().replace(/['"]+/g,''); 
+                    const pr = parseFloat(c[idxPrice].replace(/['"$]+/g,''));
+                    if(tk && !isNaN(pr)) {
+                        const h = holdings.find(x => x.ticker===tk || tk.includes(':'+x.ticker));
+                        if(h) { h.marketPrice = pr; cnt++; }
+                    }
+                }
+                saveHoldings(); renderHoldings(); updateCharts(); document.getElementById('last-updated').innerText = 'Updated: '+new Date().toLocaleTimeString();
+                if(cnt===0) alert("No matching tickers found.");
+            } catch(e) { alert("Error: "+e.message); } finally { btn.classList.remove('animate-spin'); }
+        }
+        function switchTab(t) {
+            document.getElementById('view-allocation').classList.toggle('hidden', t!=='allocation');
+            document.getElementById('view-benchmark').classList.toggle('hidden', t!=='benchmark');
+            document.getElementById('btn-alloc').className = t==='allocation'?"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm":"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+            document.getElementById('btn-bench').className = t==='benchmark'?"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm":"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+        }
+    </script>
+</body>
+</html>
