@@ -36,6 +36,11 @@
             </button>
         </div>
 
+        <div id="emergency-reset" class="bg-rose-900/20 border border-rose-500/30 p-3 rounded-xl flex justify-between items-center hidden">
+            <span class="text-xs text-rose-400 font-bold">⚠️ App Frozen?</span>
+            <button onclick="hardReset()" class="bg-rose-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold">Reset Data</button>
+        </div>
+
         <div class="flex p-1 bg-zinc-900/80 rounded-xl border border-zinc-800">
             <button onclick="switchTab('allocation')" id="btn-alloc" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm">Allocation</button>
             <button onclick="switchTab('benchmark')" id="btn-bench" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300">Benchmark</button>
@@ -128,32 +133,211 @@
     <script>
         lucide.createIcons();
         
-        let holdings = JSON.parse(localStorage.getItem('port_holdings')) || [];
-        let history = JSON.parse(localStorage.getItem('port_history')) || [];
-        let config = JSON.parse(localStorage.getItem('port_config')) || { csvUrl: '' };
-        
+        // --- SAFE INIT ---
+        let holdings = [];
+        let history = [];
+        let config = { csvUrl: '' };
+
+        try {
+            holdings = JSON.parse(localStorage.getItem('port_holdings')) || [];
+            history = JSON.parse(localStorage.getItem('port_history')) || [];
+            config = JSON.parse(localStorage.getItem('port_config')) || { csvUrl: '' };
+        } catch (e) {
+            console.error("Data corrupted, showing reset button");
+            document.getElementById('emergency-reset').classList.remove('hidden');
+        }
+
         let chartAllocInstance = null;
         let chartBenchInstance = null;
         const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
-        // INIT
-        renderHoldings();
-        renderHistory();
-        updateCharts();
+        // TRY RENDER
+        try {
+            renderHoldings();
+            renderHistory();
+            updateCharts();
+        } catch (e) {
+            console.error("Render crashed", e);
+            document.getElementById('emergency-reset').classList.remove('hidden');
+        }
+
+        // --- UTILS ---
+        function hardReset() {
+            if(confirm("This will clear all data to fix the crash. Confirm?")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
 
         // --- ALLOCATION ---
         function addHolding() {
             const ticker = document.getElementById('inp-ticker').value.toUpperCase().trim();
             const qty = parseFloat(document.getElementById('inp-qty').value);
             const cost = parseFloat(document.getElementById('inp-price').value);
-            const target = parseFloat(document.getElementById('inp-target').value) || 0; // NEW: Target
+            const target = parseFloat(document.getElementById('inp-target').value) || 0; 
 
             if (!ticker || isNaN(qty) || isNaN(cost)) return alert("Please fill details");
 
             const existing = holdings.find(h => h.ticker === ticker);
             if (existing) {
-                // Update existing
                 const totalCost = (existing.qty * existing.avgCost) + (qty * cost);
                 const totalQty = existing.qty + qty;
                 existing.qty = totalQty;
-                existing.avgCost = totalCost /
+                existing.avgCost = totalCost / totalQty;
+                existing.target = target > 0 ? target : existing.target; 
+            } else {
+                holdings.push({ ticker, qty, avgCost: cost, marketPrice: cost, target: target });
+            }
+            saveHoldings(); renderHoldings(); updateCharts();
+            document.getElementById('inp-ticker').value = ''; document.getElementById('inp-qty').value = ''; 
+            document.getElementById('inp-price').value = ''; document.getElementById('inp-target').value = '';
+        }
+
+        function removeHolding(ticker) {
+            if(confirm('Delete ' + ticker + '?')) { holdings = holdings.filter(h => h.ticker !== ticker); saveHoldings(); renderHoldings(); updateCharts(); }
+        }
+
+        function renderHoldings() {
+            let totalVal = 0;
+            let totalCost = 0;
+            holdings.forEach(h => {
+                totalVal += h.qty * (h.marketPrice || h.avgCost);
+                totalCost += h.qty * h.avgCost;
+            });
+
+            const list = document.getElementById('holdings-list'); list.innerHTML = '';
+            
+            holdings.forEach(h => {
+                const marketVal = h.qty * (h.marketPrice || h.avgCost);
+                const costVal = h.qty * h.avgCost;
+                const pl = marketVal - costVal; 
+                const plPct = costVal > 0 ? (pl / costVal) * 100 : 0;
+                
+                const currentPct = totalVal > 0 ? (marketVal / totalVal) * 100 : 0;
+                const targetPct = h.target || 0;
+                const drift = currentPct - targetPct;
+                
+                let pctColor = "text-zinc-500";
+                if (targetPct > 0) {
+                    if (currentPct > targetPct + 2) pctColor = "text-yellow-500 font-bold"; 
+                    else if (currentPct < targetPct - 2) pctColor = "text-blue-400"; 
+                }
+
+                const isProfit = pl >= 0;
+                list.insertAdjacentHTML('beforeend', `
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex justify-between items-center">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-white text-base">${h.ticker}</span>
+                            <span class="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">${h.qty.toLocaleString()} units</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <div class="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                <div class="h-full ${drift > 0 ? 'bg-yellow-500' : 'bg-emerald-500'}" style="width: ${Math.min(currentPct, 100)}%"></div>
+                            </div>
+                            <span class="${pctColor}">${currentPct.toFixed(1)}%</span>
+                            <span class="text-zinc-600 text-[10px]">/ Target ${targetPct}%</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-white text-sm">${moneyFmt.format(marketVal)}</div>
+                        <div class="text-xs font-bold ${isProfit?'text-emerald-400 bg-emerald-500/10':'text-rose-400 bg-rose-500/10'} px-2 py-0.5 rounded-md inline-block mt-1">${isProfit?'+':''}${moneyFmt.format(pl)} (${plPct.toFixed(2)}%)</div>
+                    </div>
+                    <button onclick="removeHolding('${h.ticker}')" class="ml-3 text-zinc-600 hover:text-rose-500"><i data-lucide="trash-2" width="16"></i></button>
+                </div>`);
+            });
+
+            const totalPL = totalVal - totalCost; 
+            const totalPLPct = totalCost>0?(totalPL/totalCost)*100:0;
+            document.getElementById('total-value').innerText = moneyFmt.format(totalVal);
+            document.getElementById('total-pl').innerText = (totalPL>=0?'+':'') + moneyFmt.format(totalPL);
+            document.getElementById('total-pl').className = `text-2xl font-black ${totalPL>=0?'text-emerald-400':'text-rose-400'}`;
+            document.getElementById('total-pl-pct').innerText = (totalPL>=0?'+':'') + totalPLPct.toFixed(2) + '%';
+            document.getElementById('total-pl-pct').className = `text-xs font-bold ${totalPL>=0?'text-emerald-500':'text-rose-500'}`;
+            document.getElementById('chart-center-count').innerText = holdings.length;
+            lucide.createIcons();
+        }
+
+        // --- BENCHMARK & CHARTS ---
+        function toggleLogModal() { const m = document.getElementById('modal-log'); m.classList.toggle('hidden'); m.classList.toggle('flex'); if(!m.classList.contains('hidden')) document.getElementById('log-date').valueAsDate = new Date(); }
+        function saveLog() {
+            const date = document.getElementById('log-date').value;
+            const portVal = parseFloat(document.getElementById('log-val').value);
+            const spVal = parseFloat(document.getElementById('log-sp').value);
+            if(!date || isNaN(portVal) || isNaN(spVal)) return alert("Fill all fields");
+            history.push({ date, portVal, spVal });
+            history.sort((a,b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('port_history', JSON.stringify(history));
+            renderHistory(); updateCharts(); toggleLogModal();
+        }
+        function deleteLog(idx) { if(confirm('Delete log?')) { history.splice(idx, 1); localStorage.setItem('port_history', JSON.stringify(history)); renderHistory(); updateCharts(); } }
+        function renderHistory() {
+            const list = document.getElementById('history-list'); list.innerHTML = '';
+            if(history.length === 0) { list.innerHTML = '<p class="text-center text-xs text-zinc-600 py-4">No history recorded yet.</p>'; return; }
+            history.slice().reverse().forEach((h, i) => {
+                const realIdx = history.length - 1 - i;
+                list.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-center text-sm p-3 border-b border-zinc-800/50"><span class="text-zinc-500 font-mono text-xs">${h.date}</span><div class="flex gap-4"><span class="text-emerald-400 font-bold">$${h.portVal.toLocaleString()}</span><span class="text-blue-400 font-bold">SPX ${h.spVal}</span></div><button onclick="deleteLog(${realIdx})" class="text-zinc-700 hover:text-rose-500"><i data-lucide="x" width="14"></i></button></div>`);
+            });
+            lucide.createIcons();
+        }
+
+        function updateCharts() {
+            const ctxAlloc = document.getElementById('chartAlloc').getContext('2d');
+            if (chartAllocInstance) chartAllocInstance.destroy();
+            const sortedH = [...holdings].sort((a,b) => (b.qty*(b.marketPrice||b.avgCost)) - (a.qty*(a.marketPrice||a.avgCost)));
+            const allocLabels = sortedH.map(h => h.ticker);
+            const allocData = sortedH.map(h => h.qty * (h.marketPrice || h.avgCost));
+            chartAllocInstance = new Chart(ctxAlloc, {
+                type: 'doughnut',
+                data: { labels: allocLabels, datasets: [{ data: allocData, backgroundColor: ['#10b981','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'], borderWidth: 0, hoverOffset: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+            });
+
+            const ctxBench = document.getElementById('chartBench').getContext('2d');
+            if (chartBenchInstance) chartBenchInstance.destroy();
+            if (history.length > 1) {
+                const labels = history.map(h => h.date);
+                const myData = history.map(h => h.portVal);
+                const startPort = history[0].portVal; const startSP = history[0].spVal;
+                const spData = history.map(h => (h.spVal / startSP) * startPort);
+                chartBenchInstance = new Chart(ctxBench, {
+                    type: 'line',
+                    data: { labels: labels, datasets: [{ label: 'My Portfolio', data: myData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.3, pointRadius: 3 }, { label: 'Market (S&P500)', data: spData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.3, pointRadius: 3 }] },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { labels: { color: '#9ca3af', font: {size: 10} } } }, scales: { x: { grid: { display: false }, ticks: { color: '#52525b', font: {size: 10} } }, y: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: {size: 10} } } } }
+                });
+            }
+        }
+
+        function saveHoldings() { localStorage.setItem('port_holdings', JSON.stringify(holdings)); }
+        function toggleSettings() { const m = document.getElementById('modal-settings'); m.classList.toggle('hidden'); m.classList.toggle('flex'); document.getElementById('inp-csv-link').value = config.csvUrl; }
+        function saveSettings() { config.csvUrl = document.getElementById('inp-csv-link').value.trim(); localStorage.setItem('port_config', JSON.stringify(config)); toggleSettings(); if(config.csvUrl) refreshPrices(); }
+        async function refreshPrices() {
+            if (!config.csvUrl) return alert("Set CSV Link first!");
+            const btn = document.getElementById('btn-refresh'); btn.classList.add('animate-spin');
+            try {
+                let res; try { res = await fetch(config.csvUrl); if(!res.ok) throw new Error(); } catch(e) { res = await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(config.csvUrl)); }
+                const text = await res.text(); const rows = text.split(/\r?\n/); const headers = rows[0].split(',').map(h=>h.trim().toLowerCase());
+                const idxTicker = headers.findIndex(h=>h.includes('ticker')||h.includes('symbol')); const idxPrice = headers.findIndex(h=>h.includes('price')||h.includes('close'));
+                if (idxTicker===-1||idxPrice===-1) throw new Error("Check CSV headers");
+                let cnt=0;
+                for(let i=1; i<rows.length; i++) {
+                    const c=rows[i].split(','); if(c.length<=idxPrice) continue;
+                    const tk=c[idxTicker].trim().toUpperCase().replace(/['"]+/g,''); const pr=parseFloat(c[idxPrice].replace(/['"$]+/g,''));
+                    if(tk && !isNaN(pr)) {
+                        const h=holdings.find(x=>x.ticker===tk||tk.includes(':'+x.ticker));
+                        if(h) { h.marketPrice=pr; cnt++; }
+                    }
+                }
+                saveHoldings(); renderHoldings(); updateCharts(); document.getElementById('last-updated').innerText = 'Updated: '+new Date().toLocaleTimeString();
+                if(cnt===0) alert("No matching tickers found.");
+            } catch(e) { alert("Error: "+e.message); } finally { btn.classList.remove('animate-spin'); }
+        }
+        function switchTab(t) {
+            document.getElementById('view-allocation').classList.toggle('hidden', t!=='allocation');
+            document.getElementById('view-benchmark').classList.toggle('hidden', t!=='benchmark');
+            document.getElementById('btn-alloc').className = t==='allocation'?"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm":"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+            document.getElementById('btn-bench').className = t==='benchmark'?"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-white bg-zinc-800 shadow-sm":"flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-zinc-300";
+        }
+    </script>
+</body>
+</html>
