@@ -3,194 +3,179 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>ProTrade Journal</title>
+    <title>ProTrade Simple</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #18181b; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; padding-bottom: 40px;}
-        input, select, textarea { background-color: #18181b; border-color: #27272a; color: white; }
-        input:focus, select:focus, textarea:focus { border-color: #10b981; outline: none; ring: 0; }
-        .tab-active { background-color: #e4e4e7; color: #09090b; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; padding-bottom: 40px; -webkit-tap-highlight-color: transparent; }
+        input, select { background-color: #18181b; border-color: #27272a; color: white; outline: none; }
+        input:focus, select:focus { border-color: #10b981; }
+        .tab-active { background-color: #e4e4e7; color: #09090b; font-weight: 700; }
         .tab-inactive { background-color: #18181b; color: #71717a; }
-        .tab-inactive:hover { background-color: #27272a; color: #d4d4d8; }
-        /* Calendar Hover Effect */
-        .cal-day:hover { border-color: #34d399; cursor: pointer; background-color: #064e3b; }
+        .cal-day:hover { background-color: #27272a; cursor: pointer; border-color: #3f3f46; }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="min-h-screen">
 
-    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 space-y-6 fade-in">
+    <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6 fade-in">
         
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-emerald-500 to-teal-600 p-2.5 rounded-xl shadow-lg shadow-emerald-900/20">
-                    <i data-lucide="bar-chart-2" class="w-6 h-6 text-white"></i>
+                <div class="bg-gradient-to-br from-emerald-500 to-green-600 p-2.5 rounded-xl shadow-lg shadow-emerald-900/20">
+                    <i data-lucide="wallet" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-white">ProTrade <span class="text-zinc-500 font-medium">Journal</span></h1>
-                    <p class="text-xs text-zinc-500">Professional Trading Log</p>
+                    <h1 class="text-xl font-bold text-white tracking-tight">ProTrade <span class="text-zinc-500">Journal</span></h1>
+                    <p class="text-xs text-zinc-500">Simple P/L Tracker</p>
                 </div>
             </div>
 
             <div class="flex items-center gap-2">
-                 <button onclick="toggleModal('modal-settings')" class="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 transition-colors" title="Backup / Restore">
+                 <button onclick="toggleModal('modal-settings')" class="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400">
                     <i data-lucide="save" class="w-5 h-5"></i>
                 </button>
-                <button onclick="toggleModal('modal-funds')" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-sm font-bold transition-colors">
-                    <i data-lucide="wallet" class="w-4 h-4"></i> Manage Funds
+                <button onclick="openFundModal()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-sm font-bold">
+                    <i data-lucide="landmark" class="w-4 h-4"></i> Funds
                 </button>
-                <button onclick="openAddTrade()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all">
+                <button onclick="openAddTrade()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-900/20">
                     <i data-lucide="plus" class="w-4 h-4"></i> Add Trade
                 </button>
             </div>
         </div>
 
-        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button onclick="setTab('All')" id="tab-All" class="px-5 py-2 rounded-lg text-sm transition-all tab-active">Overview</button>
-            <button onclick="setTab('Day Trade')" id="tab-Day Trade" class="px-5 py-2 rounded-lg text-sm transition-all tab-inactive">Day Trade</button>
-            <button onclick="setTab('Swing Trade')" id="tab-Swing Trade" class="px-5 py-2 rounded-lg text-sm transition-all tab-inactive">Swing Trade</button>
-            <button onclick="setTab('Options')" id="tab-Options" class="px-5 py-2 rounded-lg text-sm transition-all tab-inactive">Options</button>
+        <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button onclick="setTab('All')" id="tab-All" class="px-6 py-2 rounded-xl text-sm transition-all tab-active">Overview</button>
+            <button onclick="setTab('Day Trade')" id="tab-Day Trade" class="px-6 py-2 rounded-xl text-sm transition-all tab-inactive">Day Trade</button>
+            <button onclick="setTab('Swing Trade')" id="tab-Swing Trade" class="px-6 py-2 rounded-xl text-sm transition-all tab-inactive">Swing Trade</button>
+            <button onclick="setTab('Options')" id="tab-Options" class="px-6 py-2 rounded-xl text-sm transition-all tab-inactive">Options</button>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Portfolio Value</span><i data-lucide="briefcase" class="w-4 h-4 text-purple-500"></i></div>
-                <div id="stat-port-val" class="text-3xl font-black text-white">$0.00</div>
-                <div id="stat-invested" class="text-[10px] text-zinc-600 mt-1">Cap: $0.00</div>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                <p class="text-[10px] text-zinc-500 font-bold uppercase mb-1">Portfolio Value</p>
+                <h2 id="val-port" class="text-3xl font-black text-white">$0.00</h2>
             </div>
-            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Net Profit</span><i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-500"></i></div>
-                <div id="stat-net-profit" class="text-3xl font-black text-white">$0.00</div>
-                <div class="text-[10px] text-zinc-600 mt-1">Realized P/L</div>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                <p class="text-[10px] text-zinc-500 font-bold uppercase mb-1">Net Profit</p>
+                <h2 id="val-profit" class="text-3xl font-black text-zinc-500">$0.00</h2>
             </div>
-            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">ROI</span><i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i></div>
-                <div id="stat-roi" class="text-3xl font-black text-emerald-500">0.00%</div>
-                <div class="text-[10px] text-zinc-600 mt-1">Return on Investment</div>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                <p class="text-[10px] text-zinc-500 font-bold uppercase mb-1">Win Rate</p>
+                <h2 id="val-winrate" class="text-3xl font-black text-blue-500">0%</h2>
             </div>
-            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Win Rate</span><i data-lucide="target" class="w-4 h-4 text-blue-500"></i></div>
-                <div id="stat-win-rate" class="text-3xl font-black text-blue-500">0.0%</div>
-                <div id="stat-total-trades" class="text-[10px] text-zinc-600 mt-1">0 Trades</div>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                <p class="text-[10px] text-zinc-500 font-bold uppercase mb-1">Capital</p>
+                <h2 id="val-cap" class="text-3xl font-black text-zinc-600">$0.00</h2>
             </div>
-            
-            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Win</p><p id="stat-avg-win" class="text-lg font-bold text-emerald-400">$0.00</p></div>
-             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Loss</p><p id="stat-avg-loss" class="text-lg font-bold text-rose-400">$0.00</p></div>
-             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Profit Factor</p><p id="stat-pf" class="text-lg font-bold text-orange-400">0.00</p></div>
-             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Largest Win</p><p id="stat-max-win" class="text-lg font-bold text-emerald-400">$0.00</p></div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             <div class="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-zinc-500"></i> Performance Calendar</h3>
-                    <div class="flex gap-2">
-                        <button onclick="changeMonth(-1)" class="p-1 hover:bg-zinc-800 rounded text-zinc-400 transition-colors"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-                        <span id="cal-month-year" class="text-sm font-bold text-white w-32 text-center pt-1">...</span>
-                        <button onclick="changeMonth(1)" class="p-1 hover:bg-zinc-800 rounded text-zinc-400 transition-colors"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-zinc-500"></i> Calendar</h3>
+                    <div class="flex gap-2 text-sm font-bold">
+                        <button onclick="changeMonth(-1)" class="p-1 text-zinc-500 hover:text-white"><i data-lucide="chevron-left"></i></button>
+                        <span id="cal-month" class="w-32 text-center text-white">...</span>
+                        <button onclick="changeMonth(1)" class="p-1 text-zinc-500 hover:text-white"><i data-lucide="chevron-right"></i></button>
                     </div>
                 </div>
-                
-                <div class="grid grid-cols-7 mb-2 text-center">
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Sun</div>
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Mon</div>
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Tue</div>
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Wed</div>
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Thu</div>
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Fri</div>
-                    <div class="text-[10px] font-bold text-zinc-600 uppercase">Sat</div>
+                <div class="grid grid-cols-7 text-center mb-2">
+                    <div class="text-[10px] text-zinc-600 font-bold uppercase">Sun</div><div class="text-[10px] text-zinc-600 font-bold uppercase">Mon</div><div class="text-[10px] text-zinc-600 font-bold uppercase">Tue</div><div class="text-[10px] text-zinc-600 font-bold uppercase">Wed</div><div class="text-[10px] text-zinc-600 font-bold uppercase">Thu</div><div class="text-[10px] text-zinc-600 font-bold uppercase">Fri</div><div class="text-[10px] text-zinc-600 font-bold uppercase">Sat</div>
                 </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 h-96"></div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 h-80 md:h-96"></div>
             </div>
 
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col h-[500px]">
-                <h3 class="font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="list" class="w-4 h-4 text-zinc-500"></i> Recent Activity <span id="list-filter-label" class="text-xs text-zinc-600 bg-zinc-800 px-2 py-0.5 rounded ml-auto">All</span></h3>
-                <div id="tx-list" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                <h3 class="font-bold text-white mb-4">Recent P/L</h3>
+                <div id="tx-list" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-trade" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+        <div class="bg-zinc-950 w-full max-w-sm rounded-3xl border border-zinc-800 p-6 space-y-5 shadow-2xl">
+            <div class="flex justify-between items-center"><h3 class="text-xl font-bold text-white">Add Trade</h3><button onclick="toggleModal('modal-trade')"><i data-lucide="x" class="text-zinc-500"></i></button></div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-zinc-500 uppercase font-bold block mb-1.5">Date</label>
+                    <input type="date" id="t-date" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-white text-sm font-bold">
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-500 uppercase font-bold block mb-1.5">Strategy</label>
+                    <select id="t-strategy" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-white text-sm font-bold">
+                        <option value="Day Trade">Day Trade</option>
+                        <option value="Swing Trade">Swing Trade</option>
+                        <option value="Options">Options</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-xs text-zinc-500 uppercase font-bold block mb-1.5">Outcome</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="setOutcome('Win')" id="btn-win" class="py-3 rounded-xl border border-zinc-800 text-sm font-bold transition-all bg-zinc-900 text-zinc-400">Win</button>
+                        <button onclick="setOutcome('Loss')" id="btn-loss" class="py-3 rounded-xl border border-zinc-800 text-sm font-bold transition-all bg-zinc-900 text-zinc-400">Loss</button>
                     </div>
-            </div>
-        </div>
+                </div>
 
+                <div>
+                    <label class="text-xs text-zinc-500 uppercase font-bold block mb-1.5">P/L Amount ($)</label>
+                    <input type="number" id="t-amount" placeholder="0.00" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-white text-xl font-bold placeholder-zinc-700">
+                </div>
+            </div>
+
+            <button onclick="saveTrade()" class="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-900/20">Save Trade</button>
+        </div>
     </div>
 
-    <div id="modal-trade" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
-        <div class="bg-zinc-900 w-full max-w-md rounded-3xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
-            <h3 class="text-lg font-bold text-white">Record Trade</h3>
-            <div class="grid grid-cols-2 gap-3">
-                <input type="date" id="t-date" class="bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white">
-                <select id="t-type" class="bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white font-bold text-indigo-400">
+    <div id="modal-funds" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+        <div class="bg-zinc-950 w-full max-w-sm rounded-3xl border border-zinc-800 p-6 space-y-5 shadow-2xl">
+            <h3 class="text-xl font-bold text-white">Manage Funds</h3>
+            
+            <div class="bg-zinc-900 p-1 rounded-xl grid grid-cols-2 gap-1">
+                <button onclick="setFundType('Deposit')" id="btn-dep" class="py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white">Deposit</button>
+                <button onclick="setFundType('Withdraw')" id="btn-wit" class="py-2 rounded-lg text-sm font-bold text-zinc-400 hover:bg-zinc-800">Withdraw</button>
+            </div>
+
+            <div>
+                <label class="text-xs text-zinc-500 uppercase font-bold block mb-1.5">Allocated Portfolio</label>
+                <select id="f-strategy" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-white text-sm font-bold">
                     <option value="Day Trade">Day Trade</option>
                     <option value="Swing Trade">Swing Trade</option>
                     <option value="Options">Options</option>
                 </select>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <input type="text" id="t-ticker" placeholder="Ticker (e.g. TSLA)" class="bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white uppercase font-bold">
-                <input type="text" id="t-strategy" placeholder="Strategy (e.g. Breakout)" class="bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white">
+
+            <div>
+                <label class="text-xs text-zinc-500 uppercase font-bold block mb-1.5">Amount ($)</label>
+                <input type="number" id="f-amount" placeholder="0.00" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-white text-xl font-bold">
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <input type="number" id="t-pl" placeholder="P/L ($)" class="bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white font-bold">
-                <input type="number" id="t-roi" placeholder="ROI (%)" class="bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white">
-            </div>
-            <textarea id="t-notes" rows="2" placeholder="Notes..." class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white resize-none"></textarea>
-            
-            <div class="flex gap-2 pt-2">
-                <button onclick="toggleModal('modal-trade')" class="flex-1 py-3 rounded-xl bg-zinc-800 text-zinc-400 font-bold text-sm">Cancel</button>
-                <button onclick="saveTrade()" class="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm">Save Trade</button>
+
+            <div class="flex gap-2 mt-2">
+                <button onclick="toggleModal('modal-funds')" class="flex-1 py-3 rounded-xl bg-zinc-900 text-zinc-400 font-bold">Cancel</button>
+                <button onclick="saveFund()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold">Update</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-funds" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
+    <div id="modal-settings" class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
         <div class="bg-zinc-900 w-full max-w-sm rounded-3xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
-            <h3 class="text-lg font-bold text-white">Manage Funds</h3>
-            
-            <div>
-                <label class="text-xs text-zinc-500 uppercase font-bold block mb-2">Allocated Strategy</label>
-                <select id="f-strategy" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white font-bold">
-                    <option value="Day Trade">Day Trade</option>
-                    <option value="Swing Trade">Swing Trade</option>
-                    <option value="Options">Options</option>
-                </select>
-                <p class="text-[10px] text-zinc-600 mt-1">Funds will be added to this strategy's capital.</p>
-            </div>
-
-            <div>
-                <label class="text-xs text-zinc-500 uppercase font-bold block mb-2">Deposit / Withdraw</label>
-                <input type="number" id="f-amount" placeholder="Amount ($)" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold text-lg">
-                <p class="text-[10px] text-zinc-600 mt-1">Positive for Deposit, Negative for Withdrawal</p>
-            </div>
-
-            <div class="flex gap-2 pt-2">
-                <button onclick="toggleModal('modal-funds')" class="flex-1 py-3 rounded-xl bg-zinc-800 text-zinc-400 font-bold text-sm">Cancel</button>
-                <button onclick="saveFund()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm">Update Balance</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
-        <div class="bg-zinc-900 w-full max-w-sm rounded-3xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="save" class="w-4 h-4 text-zinc-400"></i> Backup Data</h3>
+            <h3 class="text-lg font-bold text-white">Data Backup</h3>
             <div class="space-y-3">
-                <button onclick="exportData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 transition-all group">
-                    <div class="text-left"><div class="font-bold text-white text-sm group-hover:text-emerald-400">Copy Data</div><div class="text-[10px] text-zinc-500">Save to clipboard</div></div>
-                    <i data-lucide="copy" class="w-5 h-5 text-zinc-500 group-hover:text-emerald-400"></i>
+                <button onclick="exportData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-600 transition-all">
+                    <div class="text-left"><div class="font-bold text-white text-sm">Copy Data</div><div class="text-[10px] text-zinc-500">Save to clipboard</div></div><i data-lucide="copy" class="w-5 h-5 text-emerald-500"></i>
                 </button>
-                <button onclick="importData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 transition-all group">
-                    <div class="text-left"><div class="font-bold text-white text-sm group-hover:text-blue-400">Import Data</div><div class="text-[10px] text-zinc-500">Restore from text</div></div>
-                    <i data-lucide="download" class="w-5 h-5 text-zinc-500 group-hover:text-blue-400"></i>
+                <button onclick="importData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-600 transition-all">
+                    <div class="text-left"><div class="font-bold text-white text-sm">Import Data</div><div class="text-[10px] text-zinc-500">Restore from text</div></div><i data-lucide="download" class="w-5 h-5 text-blue-500"></i>
                 </button>
-                 <button onclick="resetData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-rose-900/10 hover:bg-rose-900/20 border border-rose-900/30 transition-all mt-4 group">
-                    <div class="text-left"><div class="font-bold text-rose-400 text-sm">Reset All</div><div class="text-[10px] text-rose-500/60">Clear everything</div></div>
-                    <i data-lucide="trash-2" class="w-5 h-5 text-rose-500/60 group-hover:text-rose-500"></i>
+                 <button onclick="resetData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-rose-900/10 border border-rose-900/20 hover:bg-rose-900/20 transition-all mt-4">
+                    <div class="text-left"><div class="font-bold text-rose-500 text-sm">Reset All</div></div><i data-lucide="trash-2" class="w-5 h-5 text-rose-500"></i>
                 </button>
             </div>
             <button onclick="toggleModal('modal-settings')" class="w-full py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 font-bold text-sm mt-2">Close</button>
@@ -199,293 +184,210 @@
 
     <script>
         lucide.createIcons();
-
-        // --- STATE ---
-        let trades = JSON.parse(localStorage.getItem('ptj_trades')) || [];
-        // Balances tracked PER STRATEGY
-        let balances = JSON.parse(localStorage.getItem('ptj_balances')) || {
-            "Day Trade": 0,
-            "Swing Trade": 0,
-            "Options": 0
-        };
+        const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
         
-        let currentFilter = 'All'; 
-        let currentDate = new Date();
-        const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+        let trades = JSON.parse(localStorage.getItem('simp_trades')) || [];
+        let balances = JSON.parse(localStorage.getItem('simp_balances')) || { "Day Trade":0, "Swing Trade":0, "Options":0 };
+        
+        let curTab = 'All';
+        let curDate = new Date();
+        let curOutcome = 'Win'; // for modal
+        let curFundType = 'Deposit'; // for modal
 
-        // --- INIT ---
+        // INIT
         renderAll();
 
         function renderAll() {
-            renderStats();
-            renderCalendar();
-            renderTrades();
-        }
-
-        // --- TABS LOGIC ---
-        function setTab(tab) {
-            currentFilter = tab;
-            ['All', 'Day Trade', 'Swing Trade', 'Options'].forEach(t => {
-                const btn = document.getElementById(`tab-${t}`);
-                if(t === tab) btn.className = "px-5 py-2 rounded-lg text-sm transition-all tab-active shadow-lg shadow-zinc-900/20";
-                else btn.className = "px-5 py-2 rounded-lg text-sm transition-all tab-inactive hover:bg-zinc-800 hover:text-zinc-300";
+            // Stats
+            let filtered = (curTab === 'All') ? trades : trades.filter(t => t.strategy === curTab);
+            let net = 0; let wins = 0;
+            filtered.forEach(t => {
+                net += t.amount;
+                if (t.amount > 0) wins++;
             });
-            document.getElementById('list-filter-label').innerText = tab;
-            renderAll();
+            
+            // Capital Logic
+            let cap = 0;
+            if (curTab === 'All') cap = Object.values(balances).reduce((a,b)=>a+b,0);
+            else cap = balances[curTab] || 0;
+
+            // DOM Update
+            document.getElementById('val-port').innerText = money.format(cap + net);
+            document.getElementById('val-profit').innerText = (net>=0?'+':'') + money.format(net);
+            document.getElementById('val-profit').className = `text-3xl font-black ${net>=0?'text-emerald-500':'text-rose-500'}`;
+            document.getElementById('val-cap').innerText = money.format(cap);
+            document.getElementById('val-winrate').innerText = (filtered.length>0 ? ((wins/filtered.length)*100).toFixed(0) : 0) + '%';
+
+            // Calendar
+            renderCalendar();
+            renderList(filtered);
         }
 
-        // --- CORE FUNCTIONS ---
-        function toggleModal(id) {
-            const m = document.getElementById(id);
-            if (m.classList.contains('hidden')) {
-                m.classList.remove('hidden');
-                m.classList.add('flex');
-                if(id==='modal-trade' && !document.getElementById('t-date').value) document.getElementById('t-date').valueAsDate = new Date();
-            } else {
-                m.classList.add('hidden');
-                m.classList.remove('flex');
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid'); grid.innerHTML = '';
+            const y = curDate.getFullYear(); const m = curDate.getMonth();
+            const firstDay = new Date(y, m, 1).getDay();
+            const daysInMonth = new Date(y, m+1, 0).getDate();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('cal-month').innerText = `${monthNames[m]} ${y}`;
+
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                
+                // Filter trades by date AND current tab
+                let dayTrades = trades.filter(t => t.date === dateStr);
+                if (curTab !== 'All') dayTrades = dayTrades.filter(t => t.strategy === curTab);
+
+                let dayPL = dayTrades.reduce((acc, t) => acc + t.amount, 0);
+                
+                let style = "bg-zinc-800/30 text-zinc-500";
+                let plHtml = "";
+                
+                if (dayTrades.length > 0) {
+                    style = dayPL >= 0 ? "bg-emerald-500/10 border border-emerald-500/30 text-white" : "bg-rose-500/10 border border-rose-500/30 text-white";
+                    plHtml = `<div class="text-[10px] font-bold mt-1 ${dayPL>=0?'text-emerald-400':'text-rose-400'}">${dayPL>=0?'+':''}${Math.round(dayPL)}</div>`;
+                }
+
+                grid.innerHTML += `<div onclick="openAddTrade('${dateStr}')" class="cal-day rounded-lg h-full flex flex-col items-center justify-center min-h-[50px] transition-all ${style}"><span class="text-xs font-bold">${d}</span>${plHtml}</div>`;
             }
         }
 
-        // ADDED: Accept date parameter to pre-fill from Calendar click
-        function openAddTrade(dateStr = null) { 
+        function renderList(list) {
+            const el = document.getElementById('tx-list'); el.innerHTML = '';
+            if(list.length === 0) { el.innerHTML = '<div class="text-center text-zinc-600 py-10">No trades yet</div>'; return; }
+            
+            // Sort by Date Desc
+            list.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            list.forEach(t => {
+                const isWin = t.amount >= 0;
+                el.innerHTML += `
+                <div class="bg-zinc-800/40 border border-zinc-800 p-3 rounded-xl flex justify-between items-center group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-8 rounded-full ${isWin?'bg-emerald-500':'bg-rose-500'}"></div>
+                        <div>
+                            <div class="font-bold text-white text-sm">${t.date}</div>
+                            <div class="text-[10px] text-zinc-500 uppercase tracking-wide">${t.strategy}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-base font-bold ${isWin?'text-emerald-400':'text-rose-400'}">${isWin?'+':''}${money.format(t.amount)}</span>
+                        <button onclick="delTrade(${t.id})" class="text-zinc-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>`;
+            });
+            lucide.createIcons();
+        }
+
+        // --- ACTIONS ---
+        function setTab(t) {
+            curTab = t;
+            ['All','Day Trade','Swing Trade','Options'].forEach(x => {
+                document.getElementById('tab-'+x).className = x===t ? "px-6 py-2 rounded-xl text-sm transition-all tab-active shadow-lg shadow-zinc-900/20" : "px-6 py-2 rounded-xl text-sm transition-all tab-inactive hover:bg-zinc-800";
+            });
+            renderAll();
+        }
+
+        function changeMonth(d) { curDate.setMonth(curDate.getMonth()+d); renderCalendar(); }
+        function toggleModal(id) { 
+            const m = document.getElementById(id); 
+            m.classList.toggle('hidden'); m.classList.toggle('flex'); 
+        }
+
+        // --- TRADE LOGIC ---
+        function openAddTrade(d = null) {
             toggleModal('modal-trade');
-            if(dateStr) {
-                document.getElementById('t-date').value = dateStr;
+            document.getElementById('t-date').value = d || new Date().toISOString().split('T')[0];
+            setOutcome('Win'); // Reset
+            document.getElementById('t-amount').value = '';
+        }
+
+        function setOutcome(o) {
+            curOutcome = o;
+            const w = document.getElementById('btn-win');
+            const l = document.getElementById('btn-loss');
+            if(o==='Win') {
+                w.className = "py-3 rounded-xl border border-emerald-500 bg-emerald-600 text-white text-sm font-bold shadow-lg shadow-emerald-900/30";
+                l.className = "py-3 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 text-sm font-bold opacity-50";
             } else {
-                document.getElementById('t-date').valueAsDate = new Date();
+                w.className = "py-3 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 text-sm font-bold opacity-50";
+                l.className = "py-3 rounded-xl border border-rose-500 bg-rose-600 text-white text-sm font-bold shadow-lg shadow-rose-900/30";
             }
         }
 
         function saveTrade() {
             const date = document.getElementById('t-date').value;
-            const ticker = document.getElementById('t-ticker').value.toUpperCase();
-            const pl = parseFloat(document.getElementById('t-pl').value);
-            const roi = parseFloat(document.getElementById('t-roi').value) || 0;
-            const type = document.getElementById('t-type').value;
-            const strategy = document.getElementById('t-strategy').value;
-            const notes = document.getElementById('t-notes').value;
-
-            if(!date || !ticker || isNaN(pl)) return alert("Please fill Date, Ticker and P/L");
-
-            const trade = { id: Date.now(), date, ticker, pl, roi, type, strategy, notes };
-            trades.push(trade);
-            trades.sort((a,b) => new Date(b.date) - new Date(a.date));
+            const strat = document.getElementById('t-strategy').value;
+            let amt = parseFloat(document.getElementById('t-amount').value);
             
-            saveData();
-            renderAll();
-            toggleModal('modal-trade');
+            if(!date || isNaN(amt)) return alert("Please fill date and amount");
             
-            // Clear inputs
-            document.getElementById('t-ticker').value = ''; document.getElementById('t-pl').value = '';
-            document.getElementById('t-roi').value = ''; document.getElementById('t-strategy').value = '';
-            document.getElementById('t-notes').value = '';
+            // Logic: Loss = negative
+            if(curOutcome === 'Loss') amt = -Math.abs(amt);
+            else amt = Math.abs(amt);
+
+            trades.push({ id: Date.now(), date, strategy: strat, amount: amt });
+            save(); renderAll(); toggleModal('modal-trade');
         }
 
-        function saveFund() {
-            const amt = parseFloat(document.getElementById('f-amount').value);
-            const strat = document.getElementById('f-strategy').value;
-            
-            if(isNaN(amt)) return alert("Invalid amount");
-            
-            // Update specific strategy balance
-            if(!balances[strat]) balances[strat] = 0;
-            balances[strat] += amt;
+        function delTrade(id) {
+            if(confirm("Delete this?")) { trades = trades.filter(t=>t.id!==id); save(); renderAll(); }
+        }
 
-            localStorage.setItem('ptj_balances', JSON.stringify(balances));
-            saveData();
-            renderStats(); 
+        // --- FUND LOGIC ---
+        function openFundModal() {
             toggleModal('modal-funds');
+            setFundType('Deposit');
             document.getElementById('f-amount').value = '';
         }
 
-        function deleteTrade(id) {
-            if(confirm("Delete this trade?")) {
-                trades = trades.filter(t => t.id !== id);
-                saveData();
-                renderAll();
-            }
-        }
-
-        function getFilteredTrades() {
-            if (currentFilter === 'All') return trades;
-            return trades.filter(t => t.type === currentFilter);
-        }
-
-        // --- RENDERING ---
-        function renderStats() {
-            const filtered = getFilteredTrades();
-            let netProfit = 0;
-            let wins = 0;
-            let losses = 0;
-            let totalWinAmt = 0;
-            let totalLossAmt = 0;
-            let maxWin = 0;
-
-            filtered.forEach(t => {
-                netProfit += t.pl;
-                if(t.pl > 0) { 
-                    wins++; totalWinAmt += t.pl; 
-                    if(t.pl > maxWin) maxWin = t.pl;
-                }
-                else if(t.pl < 0) { losses++; totalLossAmt += Math.abs(t.pl); }
-            });
-
-            // Calculate Invested Capital based on Filter
-            let investedCap = 0;
-            if (currentFilter === 'All') {
-                investedCap = (balances["Day Trade"]||0) + (balances["Swing Trade"]||0) + (balances["Options"]||0);
+        function setFundType(t) {
+            curFundType = t;
+            const d = document.getElementById('btn-dep');
+            const w = document.getElementById('btn-wit');
+            if(t==='Deposit') {
+                d.className = "py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow-lg";
+                w.className = "py-2 rounded-lg text-sm font-bold text-zinc-400 hover:bg-zinc-800";
             } else {
-                investedCap = balances[currentFilter] || 0;
-            }
-
-            const totalTrades = wins + losses;
-            const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
-            const avgWin = wins > 0 ? totalWinAmt / wins : 0;
-            const avgLoss = losses > 0 ? totalLossAmt / losses : 0;
-            const pf = totalLossAmt > 0 ? totalWinAmt / totalLossAmt : (totalWinAmt > 0 ? 99.99 : 0);
-            
-            const currentPort = investedCap + netProfit; 
-            const totalRoi = investedCap > 0 ? (netProfit / investedCap) * 100 : 0;
-
-            document.getElementById('stat-port-val').innerText = moneyFmt.format(currentPort);
-            document.getElementById('stat-invested').innerText = `Cap: ${moneyFmt.format(investedCap)}`;
-            
-            document.getElementById('stat-net-profit').innerText = (netProfit>=0?'+':'') + moneyFmt.format(netProfit);
-            document.getElementById('stat-net-profit').className = `text-3xl font-black ${netProfit>=0?'text-emerald-500':'text-rose-500'}`;
-            
-            document.getElementById('stat-roi').innerText = (totalRoi>=0?'+':'') + totalRoi.toFixed(2) + '%';
-            document.getElementById('stat-roi').className = `text-3xl font-black ${totalRoi>=0?'text-emerald-500':'text-rose-500'}`;
-            
-            document.getElementById('stat-win-rate').innerText = winRate.toFixed(1) + '%';
-            document.getElementById('stat-total-trades').innerText = `${filtered.length} Trades (${currentFilter})`;
-            
-            document.getElementById('stat-avg-win').innerText = moneyFmt.format(avgWin);
-            document.getElementById('stat-avg-loss').innerText = moneyFmt.format(avgLoss);
-            document.getElementById('stat-pf').innerText = pf.toFixed(2);
-            document.getElementById('stat-max-win').innerText = moneyFmt.format(maxWin);
-        }
-
-        function renderTrades() {
-            const list = document.getElementById('tx-list');
-            list.innerHTML = '';
-            const filtered = getFilteredTrades();
-
-            if(filtered.length === 0) {
-                list.innerHTML = `<div class="text-center text-zinc-600 py-10 flex flex-col items-center gap-2"><i data-lucide="filter" class="w-8 h-8 opacity-30"></i><span>No ${currentFilter} trades</span></div>`;
-                lucide.createIcons(); return;
-            }
-
-            filtered.forEach(t => {
-                const isWin = t.pl >= 0;
-                list.insertAdjacentHTML('beforeend', `
-                    <div class="bg-zinc-800/30 border border-zinc-800 p-3 rounded-xl flex justify-between items-center hover:bg-zinc-800/60 transition-colors group">
-                        <div class="flex items-center gap-3">
-                            <div class="w-1 h-8 rounded-full ${isWin?'bg-emerald-500':'bg-rose-500'}"></div>
-                            <div>
-                                <div class="font-bold text-white text-sm">${t.ticker} <span class="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400 ml-1 border border-zinc-700">${t.type}</span></div>
-                                <div class="text-[10px] text-zinc-500">${t.date} • ${t.strategy || 'No Strategy'}</div>
-                            </div>
-                        </div>
-                        <div class="text-right flex items-center gap-3">
-                            <div>
-                                <div class="font-bold ${isWin?'text-emerald-400':'text-rose-400'} text-sm">${isWin?'+':''}${moneyFmt.format(t.pl)}</div>
-                                <div class="text-[10px] text-zinc-500">${t.roi>0?'+':''}${t.roi}% ROI</div>
-                            </div>
-                            <button onclick="deleteTrade(${t.id})" class="text-zinc-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>
-                `);
-            });
-            lucide.createIcons();
-        }
-
-        function renderCalendar() {
-            const grid = document.getElementById('calendar-grid');
-            const monthLabel = document.getElementById('cal-month-year');
-            grid.innerHTML = '';
-
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            monthLabel.innerText = `${monthNames[month]} ${year}`;
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            for(let i=0; i<firstDay; i++) { grid.insertAdjacentHTML('beforeend', `<div></div>`); }
-
-            for(let d=1; d<=daysInMonth; d++) {
-                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                
-                // Filter Logic for Calendar
-                const filtered = getFilteredTrades();
-                const dayTrades = filtered.filter(t => t.date === dateStr);
-                
-                let dayPL = 0;
-                dayTrades.forEach(t => dayPL += t.pl);
-
-                let bgClass = "bg-zinc-800/30 border-zinc-800/50";
-                let textClass = "text-zinc-600";
-                
-                if (dayTrades.length > 0) {
-                    textClass = "text-white font-bold";
-                    if (dayPL > 0) bgClass = "bg-emerald-500/20 border-emerald-500/30";
-                    else if (dayPL < 0) bgClass = "bg-rose-500/20 border-rose-500/30";
-                    else bgClass = "bg-zinc-700";
-                }
-
-                // Added ONCLICK event to open trade modal with date
-                grid.insertAdjacentHTML('beforeend', `
-                    <div onclick="openAddTrade('${dateStr}')" class="cal-day ${bgClass} border rounded-lg h-full flex flex-col justify-between p-1 md:p-2 min-h-[60px] transition-all relative group">
-                        <span class="text-[10px] ${textClass}">${d}</span>
-                        ${dayTrades.length > 0 ? `<span class="text-[10px] font-bold self-end ${dayPL>=0?'text-emerald-400':'text-rose-400'}">${dayPL>=0?'+':''}${Math.round(dayPL)}</span>` : ''}
-                        
-                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                            <i data-lucide="plus" class="w-4 h-4 text-emerald-500/80"></i>
-                        </div>
-                    </div>
-                `);
+                d.className = "py-2 rounded-lg text-sm font-bold text-zinc-400 hover:bg-zinc-800";
+                w.className = "py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow-lg";
             }
         }
 
-        function changeMonth(delta) {
-            currentDate.setMonth(currentDate.getMonth() + delta);
-            renderCalendar();
+        function saveFund() {
+            let amt = parseFloat(document.getElementById('f-amount').value);
+            const strat = document.getElementById('f-strategy').value;
+            if(isNaN(amt)) return alert("Invalid Amount");
+
+            if(curFundType === 'Withdraw') amt = -amt;
+            balances[strat] += amt;
+            
+            localStorage.setItem('simp_balances', JSON.stringify(balances));
+            renderAll(); toggleModal('modal-funds');
         }
 
-        // --- BACKUP & RESTORE ---
-        function saveData() {
-            localStorage.setItem('ptj_trades', JSON.stringify(trades));
-            // Balances are saved in saveFund
-        }
-
-        function exportData() {
-            const data = { trades, balances };
-            navigator.clipboard.writeText(JSON.stringify(data)).then(() => alert("✅ Copied to clipboard!"));
-        }
-
-        function importData() {
-            const str = prompt("Paste your backup data here:");
-            if(str) {
-                try {
-                    const data = JSON.parse(str);
-                    if(Array.isArray(data.trades)) trades = data.trades;
-                    if(data.balances) balances = data.balances;
-                    
-                    localStorage.setItem('ptj_balances', JSON.stringify(balances));
-                    saveData();
-                    renderAll();
-                    alert("✅ Restore successful!");
-                } catch(e) { alert("❌ Invalid data"); }
-            }
-        }
+        // --- SYSTEM ---
+        function save() { localStorage.setItem('simp_trades', JSON.stringify(trades)); }
         
-        function resetData() {
-            if(confirm("⚠️ Delete ALL trades & funds?")) {
-                localStorage.clear();
-                window.location.reload();
+        function exportData() {
+            const d = { t: trades, b: balances };
+            navigator.clipboard.writeText(JSON.stringify(d)).then(()=>alert("Copied!"));
+        }
+        function importData() {
+            const s = prompt("Paste data:");
+            if(s) {
+                try {
+                    const d = JSON.parse(s);
+                    trades = d.t || []; balances = d.b || balances;
+                    save(); localStorage.setItem('simp_balances', JSON.stringify(balances));
+                    renderAll(); alert("Restored!");
+                } catch(e) { alert("Error"); }
             }
+        }
+        function resetData() {
+            if(confirm("Reset ALL data?")) { localStorage.clear(); location.reload(); }
         }
     </script>
 </body>
