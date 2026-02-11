@@ -18,8 +18,11 @@
         body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; padding-bottom: 40px;}
         input, select, textarea { background-color: #18181b; border-color: #27272a; color: white; }
         input:focus, select:focus, textarea:focus { border-color: #10b981; outline: none; ring: 0; }
-        .tab-active { background-color: #e4e4e7; color: #09090b; font-weight: 700; }
-        .tab-inactive { background-color: #18181b; color: #71717a; hover:bg-zinc-800; }
+        .tab-active { background-color: #e4e4e7; color: #09090b; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .tab-inactive { background-color: #18181b; color: #71717a; }
+        .tab-inactive:hover { background-color: #27272a; color: #d4d4d8; }
+        /* Calendar Hover Effect */
+        .cal-day:hover { border-color: #34d399; cursor: pointer; background-color: #064e3b; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -38,11 +41,11 @@
             </div>
 
             <div class="flex items-center gap-2">
-                 <button onclick="toggleModal('modal-settings')" class="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 transition-colors">
-                    <i data-lucide="settings" class="w-5 h-5"></i>
+                 <button onclick="toggleModal('modal-settings')" class="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 transition-colors" title="Backup / Restore">
+                    <i data-lucide="save" class="w-5 h-5"></i>
                 </button>
                 <button onclick="toggleModal('modal-funds')" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-sm font-bold transition-colors">
-                    <i data-lucide="wallet" class="w-4 h-4"></i> Funds
+                    <i data-lucide="wallet" class="w-4 h-4"></i> Manage Funds
                 </button>
                 <button onclick="openAddTrade()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all">
                     <i data-lucide="plus" class="w-4 h-4"></i> Add Trade
@@ -50,7 +53,7 @@
             </div>
         </div>
 
-        <div class="flex gap-2 overflow-x-auto pb-2">
+        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button onclick="setTab('All')" id="tab-All" class="px-5 py-2 rounded-lg text-sm transition-all tab-active">Overview</button>
             <button onclick="setTab('Day Trade')" id="tab-Day Trade" class="px-5 py-2 rounded-lg text-sm transition-all tab-inactive">Day Trade</button>
             <button onclick="setTab('Swing Trade')" id="tab-Swing Trade" class="px-5 py-2 rounded-lg text-sm transition-all tab-inactive">Swing Trade</button>
@@ -59,29 +62,29 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Portfolio Value</span><i data-lucide="briefcase" class="w-4 h-4 text-purple-500"></i></div>
+                <div id="stat-port-val" class="text-3xl font-black text-white">$0.00</div>
+                <div id="stat-invested" class="text-[10px] text-zinc-600 mt-1">Cap: $0.00</div>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
                 <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Net Profit</span><i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-500"></i></div>
                 <div id="stat-net-profit" class="text-3xl font-black text-white">$0.00</div>
                 <div class="text-[10px] text-zinc-600 mt-1">Realized P/L</div>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">ROI</span><i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i></div>
+                <div id="stat-roi" class="text-3xl font-black text-emerald-500">0.00%</div>
+                <div class="text-[10px] text-zinc-600 mt-1">Return on Investment</div>
             </div>
             <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
                 <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Win Rate</span><i data-lucide="target" class="w-4 h-4 text-blue-500"></i></div>
                 <div id="stat-win-rate" class="text-3xl font-black text-blue-500">0.0%</div>
                 <div id="stat-total-trades" class="text-[10px] text-zinc-600 mt-1">0 Trades</div>
             </div>
-            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Portfolio</span><i data-lucide="briefcase" class="w-4 h-4 text-purple-500"></i></div>
-                <div id="stat-port-val" class="text-3xl font-black text-white">$0.00</div>
-                <div id="stat-roi" class="text-xs font-bold text-emerald-500 mt-1">+0.00%</div>
-            </div>
-            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Profit Factor</span><i data-lucide="trending-up" class="w-4 h-4 text-orange-500"></i></div>
-                <div id="stat-pf" class="text-3xl font-black text-orange-500">0.00</div>
-                <div class="text-[10px] text-zinc-600 mt-1">Gross Win / Gross Loss</div>
-            </div>
             
             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Win</p><p id="stat-avg-win" class="text-lg font-bold text-emerald-400">$0.00</p></div>
              <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Loss</p><p id="stat-avg-loss" class="text-lg font-bold text-rose-400">$0.00</p></div>
-             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Expectancy</p><p id="stat-expectancy" class="text-lg font-bold text-white">$0.00</p></div>
+             <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Profit Factor</p><p id="stat-pf" class="text-lg font-bold text-orange-400">0.00</p></div>
              <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl"><p class="text-[10px] text-zinc-500 uppercase font-bold mb-1">Largest Win</p><p id="stat-max-win" class="text-lg font-bold text-emerald-400">$0.00</p></div>
         </div>
 
@@ -149,11 +152,23 @@
     <div id="modal-funds" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
         <div class="bg-zinc-900 w-full max-w-sm rounded-3xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
             <h3 class="text-lg font-bold text-white">Manage Funds</h3>
+            
+            <div>
+                <label class="text-xs text-zinc-500 uppercase font-bold block mb-2">Allocated Strategy</label>
+                <select id="f-strategy" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-sm text-white font-bold">
+                    <option value="Day Trade">Day Trade</option>
+                    <option value="Swing Trade">Swing Trade</option>
+                    <option value="Options">Options</option>
+                </select>
+                <p class="text-[10px] text-zinc-600 mt-1">Funds will be added to this strategy's capital.</p>
+            </div>
+
             <div>
                 <label class="text-xs text-zinc-500 uppercase font-bold block mb-2">Deposit / Withdraw</label>
                 <input type="number" id="f-amount" placeholder="Amount ($)" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold text-lg">
                 <p class="text-[10px] text-zinc-600 mt-1">Positive for Deposit, Negative for Withdrawal</p>
             </div>
+
             <div class="flex gap-2 pt-2">
                 <button onclick="toggleModal('modal-funds')" class="flex-1 py-3 rounded-xl bg-zinc-800 text-zinc-400 font-bold text-sm">Cancel</button>
                 <button onclick="saveFund()" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm">Update Balance</button>
@@ -163,35 +178,22 @@
 
     <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 fade-in">
         <div class="bg-zinc-900 w-full max-w-sm rounded-3xl border border-zinc-800 p-6 space-y-4 shadow-2xl">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="database" class="w-4 h-4 text-zinc-400"></i> Data Backup</h3>
-            
+            <h3 class="text-lg font-bold text-white flex items-center gap-2"><i data-lucide="save" class="w-4 h-4 text-zinc-400"></i> Backup Data</h3>
             <div class="space-y-3">
                 <button onclick="exportData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 transition-all group">
-                    <div class="text-left">
-                        <div class="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors">Copy Data</div>
-                        <div class="text-[10px] text-zinc-500">Save to clipboard</div>
-                    </div>
+                    <div class="text-left"><div class="font-bold text-white text-sm group-hover:text-emerald-400">Copy Data</div><div class="text-[10px] text-zinc-500">Save to clipboard</div></div>
                     <i data-lucide="copy" class="w-5 h-5 text-zinc-500 group-hover:text-emerald-400"></i>
                 </button>
-
                 <button onclick="importData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/50 transition-all group">
-                    <div class="text-left">
-                        <div class="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">Import Data</div>
-                        <div class="text-[10px] text-zinc-500">Restore from text</div>
-                    </div>
+                    <div class="text-left"><div class="font-bold text-white text-sm group-hover:text-blue-400">Import Data</div><div class="text-[10px] text-zinc-500">Restore from text</div></div>
                     <i data-lucide="download" class="w-5 h-5 text-zinc-500 group-hover:text-blue-400"></i>
                 </button>
-
                  <button onclick="resetData()" class="w-full flex items-center justify-between p-4 rounded-xl bg-rose-900/10 hover:bg-rose-900/20 border border-rose-900/30 transition-all mt-4 group">
-                    <div class="text-left">
-                        <div class="font-bold text-rose-400 text-sm">Reset Everything</div>
-                        <div class="text-[10px] text-rose-500/60">Delete all data</div>
-                    </div>
+                    <div class="text-left"><div class="font-bold text-rose-400 text-sm">Reset All</div><div class="text-[10px] text-rose-500/60">Clear everything</div></div>
                     <i data-lucide="trash-2" class="w-5 h-5 text-rose-500/60 group-hover:text-rose-500"></i>
                 </button>
             </div>
-
-            <button onclick="toggleModal('modal-settings')" class="w-full py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 font-bold text-sm mt-2 hover:bg-zinc-900 transition-colors">Close</button>
+            <button onclick="toggleModal('modal-settings')" class="w-full py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 font-bold text-sm mt-2">Close</button>
         </div>
     </div>
 
@@ -200,11 +202,15 @@
 
         // --- STATE ---
         let trades = JSON.parse(localStorage.getItem('ptj_trades')) || [];
-        let balance = parseFloat(localStorage.getItem('ptj_balance')) || 0;
-        let invested = parseFloat(localStorage.getItem('ptj_invested')) || 0;
-        let currentFilter = 'All'; // "All", "Day Trade", "Swing Trade", "Options"
+        // Balances tracked PER STRATEGY
+        let balances = JSON.parse(localStorage.getItem('ptj_balances')) || {
+            "Day Trade": 0,
+            "Swing Trade": 0,
+            "Options": 0
+        };
+        
+        let currentFilter = 'All'; 
         let currentDate = new Date();
-
         const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
         // --- INIT ---
@@ -219,14 +225,10 @@
         // --- TABS LOGIC ---
         function setTab(tab) {
             currentFilter = tab;
-            // Update buttons
             ['All', 'Day Trade', 'Swing Trade', 'Options'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
-                if(t === tab) {
-                    btn.className = "px-5 py-2 rounded-lg text-sm transition-all tab-active shadow-lg shadow-zinc-900/20";
-                } else {
-                    btn.className = "px-5 py-2 rounded-lg text-sm transition-all tab-inactive hover:bg-zinc-800 hover:text-zinc-300";
-                }
+                if(t === tab) btn.className = "px-5 py-2 rounded-lg text-sm transition-all tab-active shadow-lg shadow-zinc-900/20";
+                else btn.className = "px-5 py-2 rounded-lg text-sm transition-all tab-inactive hover:bg-zinc-800 hover:text-zinc-300";
             });
             document.getElementById('list-filter-label').innerText = tab;
             renderAll();
@@ -238,14 +240,22 @@
             if (m.classList.contains('hidden')) {
                 m.classList.remove('hidden');
                 m.classList.add('flex');
-                if(id==='modal-trade') document.getElementById('t-date').valueAsDate = new Date();
+                if(id==='modal-trade' && !document.getElementById('t-date').value) document.getElementById('t-date').valueAsDate = new Date();
             } else {
                 m.classList.add('hidden');
                 m.classList.remove('flex');
             }
         }
 
-        function openAddTrade() { toggleModal('modal-trade'); }
+        // ADDED: Accept date parameter to pre-fill from Calendar click
+        function openAddTrade(dateStr = null) { 
+            toggleModal('modal-trade');
+            if(dateStr) {
+                document.getElementById('t-date').value = dateStr;
+            } else {
+                document.getElementById('t-date').valueAsDate = new Date();
+            }
+        }
 
         function saveTrade() {
             const date = document.getElementById('t-date').value;
@@ -274,13 +284,17 @@
 
         function saveFund() {
             const amt = parseFloat(document.getElementById('f-amount').value);
+            const strat = document.getElementById('f-strategy').value;
+            
             if(isNaN(amt)) return alert("Invalid amount");
             
-            invested += amt;
-            balance += amt;
-            localStorage.setItem('ptj_invested', invested);
+            // Update specific strategy balance
+            if(!balances[strat]) balances[strat] = 0;
+            balances[strat] += amt;
+
+            localStorage.setItem('ptj_balances', JSON.stringify(balances));
             saveData();
-            renderStats(); // Update portfolio value immediately
+            renderStats(); 
             toggleModal('modal-funds');
             document.getElementById('f-amount').value = '';
         }
@@ -293,7 +307,6 @@
             }
         }
 
-        // --- FILTER HELPER ---
         function getFilteredTrades() {
             if (currentFilter === 'All') return trades;
             return trades.filter(t => t.type === currentFilter);
@@ -312,30 +325,37 @@
             filtered.forEach(t => {
                 netProfit += t.pl;
                 if(t.pl > 0) { 
-                    wins++; 
-                    totalWinAmt += t.pl; 
+                    wins++; totalWinAmt += t.pl; 
                     if(t.pl > maxWin) maxWin = t.pl;
                 }
                 else if(t.pl < 0) { losses++; totalLossAmt += Math.abs(t.pl); }
             });
+
+            // Calculate Invested Capital based on Filter
+            let investedCap = 0;
+            if (currentFilter === 'All') {
+                investedCap = (balances["Day Trade"]||0) + (balances["Swing Trade"]||0) + (balances["Options"]||0);
+            } else {
+                investedCap = balances[currentFilter] || 0;
+            }
 
             const totalTrades = wins + losses;
             const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
             const avgWin = wins > 0 ? totalWinAmt / wins : 0;
             const avgLoss = losses > 0 ? totalLossAmt / losses : 0;
             const pf = totalLossAmt > 0 ? totalWinAmt / totalLossAmt : (totalWinAmt > 0 ? 99.99 : 0);
-            const expectancy = (winRate/100 * avgWin) - ((1 - winRate/100) * avgLoss);
             
-            // Portfolio logic: If filtering, show GLOBAL Invested + FILTERED Profit
-            const currentPort = invested + netProfit; 
-            const totalRoi = invested > 0 ? (netProfit / invested) * 100 : 0;
+            const currentPort = investedCap + netProfit; 
+            const totalRoi = investedCap > 0 ? (netProfit / investedCap) * 100 : 0;
 
             document.getElementById('stat-port-val').innerText = moneyFmt.format(currentPort);
+            document.getElementById('stat-invested').innerText = `Cap: ${moneyFmt.format(investedCap)}`;
+            
             document.getElementById('stat-net-profit').innerText = (netProfit>=0?'+':'') + moneyFmt.format(netProfit);
             document.getElementById('stat-net-profit').className = `text-3xl font-black ${netProfit>=0?'text-emerald-500':'text-rose-500'}`;
             
             document.getElementById('stat-roi').innerText = (totalRoi>=0?'+':'') + totalRoi.toFixed(2) + '%';
-            document.getElementById('stat-roi').className = `text-xs font-bold mt-1 ${totalRoi>=0?'text-emerald-500':'text-rose-500'}`;
+            document.getElementById('stat-roi').className = `text-3xl font-black ${totalRoi>=0?'text-emerald-500':'text-rose-500'}`;
             
             document.getElementById('stat-win-rate').innerText = winRate.toFixed(1) + '%';
             document.getElementById('stat-total-trades').innerText = `${filtered.length} Trades (${currentFilter})`;
@@ -343,7 +363,6 @@
             document.getElementById('stat-avg-win').innerText = moneyFmt.format(avgWin);
             document.getElementById('stat-avg-loss').innerText = moneyFmt.format(avgLoss);
             document.getElementById('stat-pf').innerText = pf.toFixed(2);
-            document.getElementById('stat-expectancy').innerText = moneyFmt.format(expectancy);
             document.getElementById('stat-max-win').innerText = moneyFmt.format(maxWin);
         }
 
@@ -398,27 +417,33 @@
 
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                // Important: Calendar ALSO respects the filter!
+                
+                // Filter Logic for Calendar
                 const filtered = getFilteredTrades();
                 const dayTrades = filtered.filter(t => t.date === dateStr);
                 
                 let dayPL = 0;
                 dayTrades.forEach(t => dayPL += t.pl);
 
-                let bgClass = "bg-zinc-800/30";
+                let bgClass = "bg-zinc-800/30 border-zinc-800/50";
                 let textClass = "text-zinc-600";
                 
                 if (dayTrades.length > 0) {
                     textClass = "text-white font-bold";
-                    if (dayPL > 0) bgClass = "bg-emerald-500/20 border border-emerald-500/30";
-                    else if (dayPL < 0) bgClass = "bg-rose-500/20 border border-rose-500/30";
+                    if (dayPL > 0) bgClass = "bg-emerald-500/20 border-emerald-500/30";
+                    else if (dayPL < 0) bgClass = "bg-rose-500/20 border-rose-500/30";
                     else bgClass = "bg-zinc-700";
                 }
 
+                // Added ONCLICK event to open trade modal with date
                 grid.insertAdjacentHTML('beforeend', `
-                    <div class="${bgClass} rounded-lg h-full flex flex-col justify-between p-1 md:p-2 min-h-[50px] transition-all hover:bg-zinc-700/50">
+                    <div onclick="openAddTrade('${dateStr}')" class="cal-day ${bgClass} border rounded-lg h-full flex flex-col justify-between p-1 md:p-2 min-h-[60px] transition-all relative group">
                         <span class="text-[10px] ${textClass}">${d}</span>
                         ${dayTrades.length > 0 ? `<span class="text-[10px] font-bold self-end ${dayPL>=0?'text-emerald-400':'text-rose-400'}">${dayPL>=0?'+':''}${Math.round(dayPL)}</span>` : ''}
+                        
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                            <i data-lucide="plus" class="w-4 h-4 text-emerald-500/80"></i>
+                        </div>
                     </div>
                 `);
             }
@@ -432,11 +457,11 @@
         // --- BACKUP & RESTORE ---
         function saveData() {
             localStorage.setItem('ptj_trades', JSON.stringify(trades));
-            localStorage.setItem('ptj_balance', balance);
+            // Balances are saved in saveFund
         }
 
         function exportData() {
-            const data = { trades, balance, invested };
+            const data = { trades, balances };
             navigator.clipboard.writeText(JSON.stringify(data)).then(() => alert("✅ Copied to clipboard!"));
         }
 
@@ -446,10 +471,9 @@
                 try {
                     const data = JSON.parse(str);
                     if(Array.isArray(data.trades)) trades = data.trades;
-                    if(data.balance !== undefined) balance = data.balance;
-                    if(data.invested !== undefined) invested = data.invested;
+                    if(data.balances) balances = data.balances;
                     
-                    localStorage.setItem('ptj_invested', invested);
+                    localStorage.setItem('ptj_balances', JSON.stringify(balances));
                     saveData();
                     renderAll();
                     alert("✅ Restore successful!");
@@ -458,7 +482,7 @@
         }
         
         function resetData() {
-            if(confirm("⚠️ Delete ALL trades?")) {
+            if(confirm("⚠️ Delete ALL trades & funds?")) {
                 localStorage.clear();
                 window.location.reload();
             }
