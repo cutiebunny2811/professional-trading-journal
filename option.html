@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Option Calc Easy</title>
+    <title>Option Calc Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -83,7 +83,7 @@
         </div>
 
         <div class="text-center text-[10px] text-zinc-600">
-            *Estimates based on current Delta/Theta. Does not account for Gamma/Vega changes.
+            *Estimates based on current absolute Delta/Theta.
         </div>
 
     </div>
@@ -92,9 +92,8 @@
         lucide.createIcons();
         
         let type = 'Call';
-        const targets = [-50, -20, 0, 20, 50, 100, 200]; // ROI Targets %
+        const targets = [-50, -20, 0, 20, 50, 100, 200]; 
 
-        // Elements
         const inpCost = document.getElementById('inp-cost');
         const inpStock = document.getElementById('inp-stock');
         const inpDelta = document.getElementById('inp-delta');
@@ -102,7 +101,6 @@
         const inpDays = document.getElementById('inp-days');
         const resultBody = document.getElementById('result-body');
 
-        // Listeners
         [inpCost, inpStock, inpDelta, inpTheta, inpDays].forEach(el => el.addEventListener('input', calculate));
 
         function setType(t) {
@@ -123,46 +121,35 @@
         function calculate() {
             const cost = parseFloat(inpCost.value);
             const stock = parseFloat(inpStock.value);
-            const delta = parseFloat(inpDelta.value);
+            // FIX: Use Absolute Value of Delta (Ignore negative sign)
+            const delta = Math.abs(parseFloat(inpDelta.value)); 
             let theta = parseFloat(inpTheta.value) || 0;
             const days = parseInt(inpDays.value) || 0;
 
-            if (!cost || !stock || !delta) {
-                // If incomplete data, show placeholder
-                return; 
-            }
+            if (!cost || !stock || !delta) return; 
 
-            // Ensure Theta is treated as negative decay (even if user types positive)
-            theta = -Math.abs(theta); 
+            theta = -Math.abs(theta); // Always treat theta as negative decay
 
             let html = '';
 
             targets.forEach(roi => {
-                // 1. Calculate Target Option Value
                 const targetValue = cost * (1 + (roi / 100));
-                
-                // 2. Calculate Total Loss from Time Decay
-                const timeDecayLoss = Math.abs(theta * days); // This amount is LOST.
-                
-                // 3. To reach Target Value, Stock must cover the (Profit Needed + Time Loss)
-                // Gap = (TargetValue - CurrentCost) + TimeDecayLoss
-                // e.g. Cost 1.00, Target 2.00 (+1.00). Time lost 0.10.
-                // Stock must push option up by 1.10 total.
+                const timeDecayLoss = Math.abs(theta * days);
                 const profitNeeded = targetValue - cost;
                 const totalOptionMoveNeeded = profitNeeded + timeDecayLoss;
 
-                // 4. Calculate Stock Move Needed
+                // FIX: Logic is now direction-agnostic regarding Delta sign input
                 const stockMoveNeeded = totalOptionMoveNeeded / delta;
 
-                // 5. Final Stock Price
                 let reqStockPrice = 0;
                 if (type === 'Call') {
+                    // Call: Stock UP = Profit
                     reqStockPrice = stock + stockMoveNeeded;
                 } else {
-                    reqStockPrice = stock - stockMoveNeeded; // Put needs stock to drop
+                    // Put: Stock DOWN = Profit
+                    reqStockPrice = stock - stockMoveNeeded; 
                 }
 
-                // Styling
                 let rowClass = "border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors";
                 let roiColor = "text-zinc-400";
                 if (roi > 0) roiColor = "text-emerald-400 font-bold";
