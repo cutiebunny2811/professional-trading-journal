@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Option Calc Easy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; }
+        input, select { background-color: #18181b; border-color: #27272a; color: white; outline: none; }
+        input:focus { border-color: #10b981; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex justify-center items-start fade-in">
+
+    <div class="max-w-md w-full space-y-6">
+        
+        <div class="flex items-center gap-3 mb-6">
+            <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-xl shadow-lg shadow-indigo-900/20">
+                <i data-lucide="calculator" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Option <span class="text-zinc-500">Calc</span></h1>
+                <p class="text-xs text-zinc-500">Profit Target & Price Estimator</p>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-xl space-y-5">
+            
+            <div class="bg-zinc-950 p-1 rounded-xl flex">
+                <button onclick="setType('Call')" id="btn-call" class="flex-1 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow transition-all">CALL (Long)</button>
+                <button onclick="setType('Put')" id="btn-put" class="flex-1 py-2 rounded-lg text-sm font-bold text-zinc-500 hover:text-white transition-all">PUT (Short)</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1 block">Option Cost ($)</label>
+                    <input type="number" id="inp-cost" placeholder="e.g. 2.50" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold text-lg" step="0.01">
+                </div>
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1 block">Stock Price ($)</label>
+                    <input type="number" id="inp-stock" placeholder="e.g. 150.00" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white font-bold text-lg" step="0.01">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1 block">Delta (Δ)</label>
+                    <input type="number" id="inp-delta" placeholder="0.50" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-emerald-400 font-bold" step="0.01">
+                </div>
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1 block">Theta (Θ)</label>
+                    <input type="number" id="inp-theta" placeholder="-0.05" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-rose-400 font-bold" step="0.01">
+                </div>
+                <div>
+                    <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1 block">Hold (Days)</label>
+                    <input type="number" id="inp-days" value="0" class="w-full bg-black border border-zinc-800 rounded-xl p-3 text-zinc-300 font-bold" min="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
+            <div class="p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center">
+                <h3 class="font-bold text-zinc-300 text-sm">Target Scenarios</h3>
+                <span class="text-[10px] text-zinc-600 uppercase font-bold tracking-wider">Required Stock Price</span>
+            </div>
+            
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[10px] text-zinc-500 uppercase font-bold border-b border-zinc-800/50">
+                        <th class="p-4 font-bold">Target</th>
+                        <th class="p-4 text-right">Opt Price</th>
+                        <th class="p-4 text-right">Stock Needs To Be</th>
+                    </tr>
+                </thead>
+                <tbody id="result-body" class="text-sm">
+                    <tr><td colspan="3" class="p-8 text-center text-zinc-600 text-xs">Enter values to calculate...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-center text-[10px] text-zinc-600">
+            *Estimates based on current Delta/Theta. Does not account for Gamma/Vega changes.
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        let type = 'Call';
+        const targets = [-50, -20, 0, 20, 50, 100, 200]; // ROI Targets %
+
+        // Elements
+        const inpCost = document.getElementById('inp-cost');
+        const inpStock = document.getElementById('inp-stock');
+        const inpDelta = document.getElementById('inp-delta');
+        const inpTheta = document.getElementById('inp-theta');
+        const inpDays = document.getElementById('inp-days');
+        const resultBody = document.getElementById('result-body');
+
+        // Listeners
+        [inpCost, inpStock, inpDelta, inpTheta, inpDays].forEach(el => el.addEventListener('input', calculate));
+
+        function setType(t) {
+            type = t;
+            const btnCall = document.getElementById('btn-call');
+            const btnPut = document.getElementById('btn-put');
+            
+            if(t === 'Call') {
+                btnCall.className = "flex-1 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white shadow transition-all";
+                btnPut.className = "flex-1 py-2 rounded-lg text-sm font-bold text-zinc-500 hover:text-white transition-all";
+            } else {
+                btnCall.className = "flex-1 py-2 rounded-lg text-sm font-bold text-zinc-500 hover:text-white transition-all";
+                btnPut.className = "flex-1 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white shadow transition-all";
+            }
+            calculate();
+        }
+
+        function calculate() {
+            const cost = parseFloat(inpCost.value);
+            const stock = parseFloat(inpStock.value);
+            const delta = parseFloat(inpDelta.value);
+            let theta = parseFloat(inpTheta.value) || 0;
+            const days = parseInt(inpDays.value) || 0;
+
+            if (!cost || !stock || !delta) {
+                // If incomplete data, show placeholder
+                return; 
+            }
+
+            // Ensure Theta is treated as negative decay (even if user types positive)
+            theta = -Math.abs(theta); 
+
+            let html = '';
+
+            targets.forEach(roi => {
+                // 1. Calculate Target Option Value
+                const targetValue = cost * (1 + (roi / 100));
+                
+                // 2. Calculate Total Loss from Time Decay
+                const timeDecayLoss = Math.abs(theta * days); // This amount is LOST.
+                
+                // 3. To reach Target Value, Stock must cover the (Profit Needed + Time Loss)
+                // Gap = (TargetValue - CurrentCost) + TimeDecayLoss
+                // e.g. Cost 1.00, Target 2.00 (+1.00). Time lost 0.10.
+                // Stock must push option up by 1.10 total.
+                const profitNeeded = targetValue - cost;
+                const totalOptionMoveNeeded = profitNeeded + timeDecayLoss;
+
+                // 4. Calculate Stock Move Needed
+                const stockMoveNeeded = totalOptionMoveNeeded / delta;
+
+                // 5. Final Stock Price
+                let reqStockPrice = 0;
+                if (type === 'Call') {
+                    reqStockPrice = stock + stockMoveNeeded;
+                } else {
+                    reqStockPrice = stock - stockMoveNeeded; // Put needs stock to drop
+                }
+
+                // Styling
+                let rowClass = "border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors";
+                let roiColor = "text-zinc-400";
+                if (roi > 0) roiColor = "text-emerald-400 font-bold";
+                if (roi < 0) roiColor = "text-rose-400";
+                if (roi === 0) { roiColor = "text-white font-bold"; rowClass = "bg-zinc-800/50 border-b border-zinc-700"; }
+                if (roi === 100) roiColor = "text-indigo-400 font-black";
+
+                html += `
+                <tr class="${rowClass}">
+                    <td class="p-4 ${roiColor}">${roi > 0 ? '+' : ''}${roi}%</td>
+                    <td class="p-4 text-right font-mono text-zinc-300">$${targetValue.toFixed(2)}</td>
+                    <td class="p-4 text-right font-mono font-bold text-white">$${reqStockPrice.toFixed(2)}</td>
+                </tr>`;
+            });
+
+            resultBody.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
