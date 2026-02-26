@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="th">
-<head><link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
-<link rel="icon" href="https://emojicdn.elk.sh/❄️">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>สต๊อกตู้เย็น - Clean & Sync</title>
+    <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
+    <link rel="icon" href="https://emojicdn.elk.sh/❄️">
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -34,7 +36,6 @@
         const UNITS = ["กก.", "กรัม", "ลิตร", "มล.", "ชิ้น", "กล่อง", "ถุง", "ขวด", "แถว", "แพ็ค"];
         const CAT_ACCENT = { "เนื้อสัตว์": "#D4846A", "ซีฟู้ด": "#6ABED4", "ผัก": "#7EC8A0", "นม/ไข่": "#D4C896", "เครื่องดื่ม": "#89A8D4", "เครื่องปรุง": "#D4A06A", "อาหารสำเร็จ": "#B49AD4", "อื่นๆ": "#7A7A8A" };
         const CAT_ICON = { "เนื้อสัตว์": "beef", "ซีฟู้ด": "fish", "ผัก": "leaf", "นม/ไข่": "milk", "เครื่องดื่ม": "glass-water", "เครื่องปรุง": "flame-kindling", "อาหารสำเร็จ": "utensils-crossed", "อื่นๆ": "box" };
-
         const T = { bg: "#0C0C0E", surface: "#131316", elevated: "#1C1C22", border: "rgba(255,255,255,0.07)", borderHi: "rgba(255,255,255,0.13)", muted: "#64647A", dim: "#38384A", accent: "#C8A96E", danger: "#D4726A", success: "#7EC8A0" };
 
         function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -55,8 +56,7 @@
             return <i ref={iconRef} data-lucide={name} style={{ width: size, height: size, color: color }}></i>;
         }
 
-function App() {
-            // 1. ประกาศตัวแปรทั้งหมดก่อน (useState)
+        function App() {
             const [items, setItems] = useState([]);
             const [loading, setLoading] = useState(true);
             const [showAdd, setShowAdd] = useState(false);
@@ -74,16 +74,15 @@ function App() {
 
             const showToast = (msg, type = "ok") => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800); };
 
-            // 2. ฟังก์ชันดึงข้อมูล (loadItems) ไว้ตรงนี้อันเดียวพอ
-           const loadItems = useCallback(async (showLoading = false) => {
-                if (showLoading) setLoading(true); // จะขึ้นหน้าจอโหลดเฉพาะตอนเราสั่งเท่านั้น
+            const loadItems = useCallback(async (showLoading = false) => {
+                if (showLoading) setLoading(true);
                 try {
                     const r = await fetch(API_URL);
                     const data = await r.json();
                     setItems(data);
                     setLastSync(new Date());
                 } catch (err) { console.error(err); }
-                setLoading(false); 
+                setLoading(false);
             }, []);
 
             const syncToSheet = async (nextItems) => {
@@ -94,9 +93,9 @@ function App() {
                 } catch { showToast("บันทึกไม่สำเร็จ", "err"); }
             };
 
-           useEffect(() => {
-                loadItems(true); // เปิดแอปครั้งแรก ให้ขึ้นหน้าจอโหลด
-                const t = setInterval(() => loadItems(false), 15000); // ทุก 15 วิ ให้ซิงค์เงียบๆ (รายการไม่หาย)
+            useEffect(() => {
+                loadItems(true);
+                const t = setInterval(() => loadItems(false), 15000);
                 return () => clearInterval(t);
             }, [loadItems]);
 
@@ -148,7 +147,7 @@ function App() {
                                 <div style={{ fontSize: 11, color: T.muted }}>{items.length} รายการ · {lastSync?.toLocaleTimeString() || "—"}</div>
                             </div>
                             <div style={{ display: "flex", gap: 10 }}>
-                               <button onClick={() => loadItems(true)} style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted }}>↻</button>
+                                <button onClick={() => loadItems(true)} style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted }}>↻</button>
                                 <button onClick={() => setShowAdd(true)} style={{ background: T.accent, borderRadius: 8, color: "#000", padding: "8px 18px", fontWeight: 600, fontSize: 13 }}>+ เพิ่มของ</button>
                             </div>
                         </div>
@@ -162,26 +161,23 @@ function App() {
                                 <button key={cat} onClick={() => setFilterCat(cat)} style={{ background: filterCat === cat ? T.surface : "transparent", border: `1px solid ${filterCat === cat ? T.borderHi : T.border}`, borderRadius: 20, color: filterCat === cat ? "#fff" : T.muted, padding: "6px 16px", whiteSpace: "nowrap", fontSize: 12 }}>{cat}</button>
                             ))}
                         </div>
-{outOfStock.length > 0 && filterCat === "ทั้งหมด" && !search && (
-    <div style={{ background: `${T.danger}15`, border: `1px solid ${T.danger}30`, borderRadius: 12, padding: "16px", marginBottom: 20, animation: "up 0.3s ease" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ color: T.danger, fontWeight: 800 }}>!</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.danger }}>หมดแล้ว {outOfStock.length} รายการ</div>
-            </div>
-            {/* ปุ่มกดสรุปรายการเพื่อส่ง LINE */}
-            <button onClick={() => {
-                const list = outOfStock.map(i => `• ${i.name}`).join('\n');
-                navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
-                showToast("คัดลอกรายการแล้ว! วางใน LINE ได้เลย");
-            }} style={{ fontSize: 11, background: T.danger, color: "#fff", padding: "4px 10px", borderRadius: 6, fontWeight: 600 }}>📋 สรุปรายการ</button>
-        </div>
-        {/* รายการชื่อของ แบบจำกัดบรรทัดเพื่อความคลีน */}
-        <div style={{ fontSize: 11, color: `${T.danger}A0`, lineHeight: "1.6", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {outOfStock.map(i => i.name).join(" · ")}
-        </div>
-    </div>
-)}
+
+                        {/* 🔔 แถบแจ้งเตือนอัจฉริยะ (จำกัดบรรทัด + ปุ่มสรุปรายการ) */}
+                        {outOfStock.length > 0 && filterCat === "ทั้งหมด" && !search && (
+                            <div style={{ background: `${T.danger}15`, border: `1px solid ${T.danger}30`, borderRadius: 12, padding: "16px", marginBottom: 20, animation: "up 0.3s ease" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                                    <div style={{ display: "flex", gap: 12 }}>
+                                        <div style={{ color: T.danger, fontWeight: 800 }}>!</div>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: T.danger }}>หมดแล้ว {outOfStock.length} รายการ</div>
+                                    </div>
+                                    <button onClick={() => {
+                                        const list = outOfStock.map(i => `• ${i.name}`).join('\n');
+                                        navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
+                                        showToast("คัดลอกรายการแล้ว! วางใน LINE ได้เลย");
+                                    }} style={{ fontSize: 11, background: T.danger, color: "#fff", padding: "4px 10px", borderRadius: 6, fontWeight: 600 }}>📋 สรุปรายการ</button>
+                                </div>
+                                <div style={{ fontSize: 11, color: `${T.danger}A0`, lineHeight: "1.6", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                    {outOfStock.map(i => i.name).join(" · ")}
                                 </div>
                             </div>
                         )}
@@ -214,6 +210,7 @@ function App() {
                         )}
                     </main>
 
+                    {/* Sheets */}
                     {showAdd && (
                         <BottomSheet onClose={() => setShowAdd(false)}>
                             <div style={{ fontWeight: 600, marginBottom: 20 }}>เพิ่มของใหม่</div>
@@ -231,7 +228,6 @@ function App() {
                             <button onClick={handleAdd} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, fontWeight: 600, color: "#000" }}>บันทึกรายการ</button>
                         </BottomSheet>
                     )}
-
                     {topUpModal && (
                         <BottomSheet onClose={() => setTopUpModal(null)}>
                             <div style={{ fontWeight: 600, marginBottom: 10 }}>เติมสต็อก: {topUpModal.name}</div>
@@ -239,7 +235,6 @@ function App() {
                             <button onClick={handleTopUp} style={{ width: "100%", background: T.success, padding: 16, borderRadius: 12, color: "#000", fontWeight: 600 }}>ยืนยันเติมของ</button>
                         </BottomSheet>
                     )}
-
                     {useModal && (
                         <BottomSheet onClose={() => setUseModal(null)}>
                             <div style={{ fontWeight: 600, marginBottom: 10 }}>ใช้ของ: {useModal.name}</div>
@@ -247,7 +242,6 @@ function App() {
                             <button onClick={handleUse} style={{ width: "100%", background: T.danger, padding: 16, borderRadius: 12, color: "#fff", fontWeight: 600 }}>ยืนยันบันทึก</button>
                         </BottomSheet>
                     )}
-
                     {editModal && (
                         <BottomSheet onClose={() => setEditModal(null)}>
                             <div style={{ fontWeight: 600, marginBottom: 15 }}>แก้ไข: {editModal.name}</div>
@@ -259,7 +253,6 @@ function App() {
                             <button onClick={handleEditSave} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, color: "#000", fontWeight: 600 }}>บันทึกการแก้ไข</button>
                         </BottomSheet>
                     )}
-
                     {toast && <div style={{ position: "fixed", bottom: 25, left: "50%", transform: "translateX(-50%)", background: T.elevated, border: `1px solid ${T.borderHi}`, padding: "12px 24px", borderRadius: 30, fontSize: 13, zIndex: 300 }}>{toast.msg}</div>}
                 </div>
             );
