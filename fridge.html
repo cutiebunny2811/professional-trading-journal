@@ -54,7 +54,8 @@
             return <i ref={iconRef} data-lucide={name} style={{ width: size, height: size, color: color }}></i>;
         }
 
-        function App() {
+function App() {
+            // 1. ประกาศตัวแปรทั้งหมดก่อน (useState)
             const [items, setItems] = useState([]);
             const [loading, setLoading] = useState(true);
             const [showAdd, setShowAdd] = useState(false);
@@ -72,7 +73,9 @@
 
             const showToast = (msg, type = "ok") => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800); };
 
+            // 2. ฟังก์ชันดึงข้อมูล (loadItems) ไว้ตรงนี้อันเดียวพอ
             const loadItems = useCallback(async () => {
+                setLoading(true); // ⬅️ สั่งให้ขึ้น "กำลังโหลด" ตอนกดรีเฟรช
                 try {
                     const r = await fetch(API_URL);
                     const data = await r.json();
