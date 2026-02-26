@@ -30,7 +30,7 @@
         const { useState, useEffect, useCallback, useRef } = React;
 
         // 🔴 แปะ URL ที่ได้จาก Google Apps Script ตรงนี้ 🔴
-        const API_URL = "https://script.google.com/macros/s/AKfycby0HHsN8RL1eZBvBiLNYAUt_aGvTNRC1pwKRu0BoUPltT5lyRpFt2KkstDFEqcP0ug2Cw/exec";
+        const API_URL = "ใส่_URL_เว็บแอป_ของคุณที่นี่";
 
         const CATEGORIES = ["เนื้อสัตว์", "ซีฟู้ด", "ผัก", "นม/ไข่", "เครื่องดื่ม", "เครื่องปรุง", "อาหารสำเร็จ", "อื่นๆ"];
         const UNITS = ["กก.", "กรัม", "ลิตร", "มล.", "ชิ้น", "กล่อง", "ถุง", "ขวด", "แถว", "แพ็ค"];
@@ -162,27 +162,26 @@
                             ))}
                         </div>
 
-                        {/* 🔔 แถบแจ้งเตือนอัจฉริยะ (จำกัดบรรทัด + ปุ่มสรุปรายการ) */}
+                        {/* 🔔 แถบแจ้งเตือนอัจฉริยะแบบตัดรายการ */}
                         {outOfStock.length > 0 && filterCat === "ทั้งหมด" && !search && (
                             <div style={{ background: `${T.danger}15`, border: `1px solid ${T.danger}30`, borderRadius: 12, padding: "16px", marginBottom: 20, animation: "up 0.3s ease" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                                    <div style={{ display: "flex", gap: 12 }}>
-                                        <div style={{ color: T.danger, fontWeight: 800 }}>!</div>
-                                        <div style={{ fontSize: 13, fontWeight: 600, color: T.danger }}>หมดแล้ว {outOfStock.length} รายการ</div>
-                                    </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.danger }}>หมดแล้ว {outOfStock.length} รายการ</div>
                                     <button onClick={() => {
                                         const list = outOfStock.map(i => `• ${i.name}`).join('\n');
                                         navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
                                         showToast("คัดลอกรายการแล้ว! วางใน LINE ได้เลย");
-                                    }} style={{ fontSize: 11, background: T.danger, color: "#fff", padding: "4px 10px", borderRadius: 6, fontWeight: 600 }}>📋 สรุปรายการ</button>
+                                    }} style={{ fontSize: 11, background: T.danger, color: "#fff", padding: "5px 12px", borderRadius: 8, fontWeight: 600 }}>📋 สรุปรายการ</button>
                                 </div>
-                                <div style={{ fontSize: 11, color: `${T.danger}A0`, lineHeight: "1.6", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                    {outOfStock.map(i => i.name).join(" · ")}
+                                <div style={{ fontSize: 11, color: `${T.danger}A0`, lineHeight: "1.6" }}>
+                                    {/* 💡 ตัดโชว์แค่ 5 ชื่อแรกเพื่อความคลีน */}
+                                    {outOfStock.slice(0, 5).map(i => i.name).join(" · ")}
+                                    {outOfStock.length > 5 && ` ...และอีก ${outOfStock.length - 5} รายการ`}
                                 </div>
                             </div>
                         )}
 
-                        {loading ? <div style={{ textAlign: "center", color: T.dim, marginTop: 50 }}>กำลังโหลด...</div> : (
+                        {loading ? <div style={{ textAlign: "center", color: T.dim, marginTop: 50 }}>กำลังซิงค์...</div> : (
                             <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border}` }}>
                                 {filtered.map((item, idx) => {
                                     const accent = CAT_ACCENT[item.category] || T.muted;
@@ -210,7 +209,7 @@
                         )}
                     </main>
 
-                    {/* Sheets */}
+                    {/* BottomSheets - Add, Use, TopUp, Edit */}
                     {showAdd && (
                         <BottomSheet onClose={() => setShowAdd(false)}>
                             <div style={{ fontWeight: 600, marginBottom: 20 }}>เพิ่มของใหม่</div>
@@ -244,7 +243,7 @@
                     )}
                     {editModal && (
                         <BottomSheet onClose={() => setEditModal(null)}>
-                            <div style={{ fontWeight: 600, marginBottom: 15 }}>แก้ไข: {editModal.name}</div>
+                            <div style={{ fontWeight: 600, marginBottom: 15 }}>แก้ไขข้อมูล: {editModal.name}</div>
                             <input value={editForm.name} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
                             <select value={editForm.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
                                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
