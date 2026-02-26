@@ -74,15 +74,15 @@ function App() {
             const showToast = (msg, type = "ok") => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800); };
 
             // 2. ฟังก์ชันดึงข้อมูล (loadItems) ไว้ตรงนี้อันเดียวพอ
-            const loadItems = useCallback(async () => {
-                setLoading(true); // ⬅️ สั่งให้ขึ้น "กำลังโหลด" ตอนกดรีเฟรช
+           const loadItems = useCallback(async (showLoading = false) => {
+                if (showLoading) setLoading(true); // จะขึ้นหน้าจอโหลดเฉพาะตอนเราสั่งเท่านั้น
                 try {
                     const r = await fetch(API_URL);
                     const data = await r.json();
                     setItems(data);
                     setLastSync(new Date());
                 } catch (err) { console.error(err); }
-                setLoading(false);
+                setLoading(false); 
             }, []);
 
             const syncToSheet = async (nextItems) => {
@@ -93,9 +93,9 @@ function App() {
                 } catch { showToast("บันทึกไม่สำเร็จ", "err"); }
             };
 
-            useEffect(() => {
-                loadItems();
-                const t = setInterval(loadItems, 15000);
+           useEffect(() => {
+                loadItems(true); // เปิดแอปครั้งแรก ให้ขึ้นหน้าจอโหลด
+                const t = setInterval(() => loadItems(false), 15000); // ทุก 15 วิ ให้ซิงค์เงียบๆ (รายการไม่หาย)
                 return () => clearInterval(t);
             }, [loadItems]);
 
@@ -147,7 +147,7 @@ function App() {
                                 <div style={{ fontSize: 11, color: T.muted }}>{items.length} รายการ · {lastSync?.toLocaleTimeString() || "—"}</div>
                             </div>
                             <div style={{ display: "flex", gap: 10 }}>
-                                <button onClick={loadItems} style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted }}>↻</button>
+                               <button onClick={() => loadItems(true)} style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted }}>↻</button>
                                 <button onClick={() => setShowAdd(true)} style={{ background: T.accent, borderRadius: 8, color: "#000", padding: "8px 18px", fontWeight: 600, fontSize: 13 }}>+ เพิ่มของ</button>
                             </div>
                         </div>
