@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>สต๊อกตู้เย็น - Clean Version</title>
+    <title>สต๊อกตู้เย็น - Clean & Sync</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -13,11 +13,8 @@
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         body{margin:0;background:#0C0C0E;font-family:'DM Sans','Noto Sans Thai',sans-serif;color:#E2E2EC}
-        
-        /* 🛠️ ซ่อนแถบเลื่อนตรงหมวดหมู่ */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         .row:hover .acts { opacity: 1 !important; }
         @keyframes up { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -29,7 +26,7 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-    
+        // 🔴 แปะ URL ที่ได้จาก Google Apps Script ตรงนี้ 🔴
         const API_URL = "https://script.google.com/macros/s/AKfycby0HHsN8RL1eZBvBiLNYAUt_aGvTNRC1pwKRu0BoUPltT5lyRpFt2KkstDFEqcP0ug2Cw/exec";
 
         const CATEGORIES = ["เนื้อสัตว์", "ซีฟู้ด", "ผัก", "นม/ไข่", "เครื่องดื่ม", "เครื่องปรุง", "อาหารสำเร็จ", "อื่นๆ"];
@@ -154,8 +151,105 @@
                     </header>
 
                     <main style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาของในตู้เย็น..." style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 16px", color: "#fff", marginBottom: 18 }} />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาของ..." style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 16px", color: "#fff", marginBottom: 18 }} />
                         
                         <div className="no-scrollbar" style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 24 }}>
                             {["ทั้งหมด", ...CATEGORIES].map(cat => (
-                                <button key={cat} onClick={() => setFilterCat(cat)} style={{ background: filterCat === cat ? T.surface : "transparent", border: `1px solid ${filterCat === cat ? T.borderHi : T.border}`, borderRadius: 20, color: filterCat ===
+                                <button key={cat} onClick={() => setFilterCat(cat)} style={{ background: filterCat === cat ? T.surface : "transparent", border: `1px solid ${filterCat === cat ? T.borderHi : T.border}`, borderRadius: 20, color: filterCat === cat ? "#fff" : T.muted, padding: "6px 16px", whiteSpace: "nowrap", fontSize: 12 }}>{cat}</button>
+                            ))}
+                        </div>
+
+                        {outOfStock.length > 0 && filterCat === "ทั้งหมด" && !search && (
+                            <div style={{ background: `${T.danger}15`, border: `1px solid ${T.danger}30`, borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 14, animation: "up 0.3s ease" }}>
+                                <div style={{ color: T.danger, fontWeight: 800 }}>!</div>
+                                <div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.danger }}>หมดแล้ว {outOfStock.length} รายการ — อย่าลืมสั่งเพิ่ม</div>
+                                    <div style={{ fontSize: 11, color: `${T.danger}A0`, marginTop: 2 }}>{outOfStock.map(i => i.name).join(" · ")}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {loading ? <div style={{ textAlign: "center", color: T.dim, marginTop: 50 }}>กำลังโหลด...</div> : (
+                            <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border}` }}>
+                                {filtered.map((item, idx) => {
+                                    const accent = CAT_ACCENT[item.category] || T.muted;
+                                    const empty = item.qty === 0;
+                                    return (
+                                        <div key={item.id} className="row" style={{ background: T.surface, borderTop: idx > 0 ? `1px solid ${T.border}` : "none", borderLeft: `3px solid ${empty ? T.danger : accent}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14 }}>
+                                            <div style={{ width: 38, height: 38, borderRadius: 10, background: `${empty ? T.danger : accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                <LucideIcon name={empty ? "x" : CAT_ICON[item.category]} color={empty ? T.danger : accent} size={18} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: 14, fontWeight: 500, color: empty ? T.muted : "#fff" }}>{item.name} {empty && <span style={{ fontSize: 9, color: T.danger, border: `1px solid ${T.danger}40`, padding: "1px 4px", borderRadius: 4, marginLeft: 6 }}>EMPTY</span>}</div>
+                                                <div style={{ fontSize: 12, color: empty ? T.danger : accent, fontFamily: "'DM Mono'", marginTop: 2 }}>{empty ? "0" : item.qty} {item.unit}</div>
+                                                {item.note && <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{item.note}</div>}
+                                            </div>
+                                            <div className="acts" style={{ display: "flex", gap: 6, opacity: 0.4 }}>
+                                                <button onClick={() => setTopUpModal(item)} style={{ background: `${T.success}15`, color: T.success, padding: "6px 12px", borderRadius: 8, fontWeight: "bold" }}>+</button>
+                                                {!empty && <button onClick={() => setUseModal(item)} style={{ background: T.elevated, color: T.text, padding: "6px 12px", borderRadius: 8, fontSize: 12 }}>ใช้</button>}
+                                                <button onClick={() => { setEditModal(item); setEditForm({ name: item.name, note: item.note || "", category: item.category }); }} style={{ padding: "8px" }}><LucideIcon name="pencil" size={14} color={T.muted} /></button>
+                                                <button onClick={() => handleDelete(item.id, item.name)} style={{ padding: "8px", color: T.dim }}>✕</button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </main>
+
+                    {showAdd && (
+                        <BottomSheet onClose={() => setShowAdd(false)}>
+                            <div style={{ fontWeight: 600, marginBottom: 20 }}>เพิ่มของใหม่</div>
+                            <input placeholder="ชื่อของ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, name: e.target.value })} />
+                            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                                <input placeholder="จำนวน" type="number" style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, qty: e.target.value })} />
+                                <select style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, unit: e.target.value })}>
+                                    {UNITS.map(u => <option key={u}>{u}</option>)}
+                                </select>
+                            </div>
+                            <select style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, category: e.target.value })}>
+                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                            </select>
+                            <input placeholder="หมายเหตุ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 20 }} onChange={e => setForm({ ...form, note: e.target.value })} />
+                            <button onClick={handleAdd} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, fontWeight: 600, color: "#000" }}>บันทึกรายการ</button>
+                        </BottomSheet>
+                    )}
+
+                    {topUpModal && (
+                        <BottomSheet onClose={() => setTopUpModal(null)}>
+                            <div style={{ fontWeight: 600, marginBottom: 10 }}>เติมสต็อก: {topUpModal.name}</div>
+                            <input type="number" placeholder={`เติม (${topUpModal.unit})`} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 16, borderRadius: 10, color: "#fff", marginBottom: 15 }} onChange={e => setTopUpAmount(e.target.value)} />
+                            <button onClick={handleTopUp} style={{ width: "100%", background: T.success, padding: 16, borderRadius: 12, color: "#000", fontWeight: 600 }}>ยืนยันเติมของ</button>
+                        </BottomSheet>
+                    )}
+
+                    {useModal && (
+                        <BottomSheet onClose={() => setUseModal(null)}>
+                            <div style={{ fontWeight: 600, marginBottom: 10 }}>ใช้ของ: {useModal.name}</div>
+                            <input type="number" placeholder={`ใช้ไปเท่าไหร่? (${useModal.unit})`} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 16, borderRadius: 10, color: "#fff", marginBottom: 15 }} onChange={e => setUseAmount(e.target.value)} />
+                            <button onClick={handleUse} style={{ width: "100%", background: T.danger, padding: 16, borderRadius: 12, color: "#fff", fontWeight: 600 }}>ยืนยันบันทึก</button>
+                        </BottomSheet>
+                    )}
+
+                    {editModal && (
+                        <BottomSheet onClose={() => setEditModal(null)}>
+                            <div style={{ fontWeight: 600, marginBottom: 15 }}>แก้ไข: {editModal.name}</div>
+                            <input value={editForm.name} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                            <select value={editForm.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
+                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                            </select>
+                            <textarea value={editForm.note} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", height: 80, marginBottom: 15 }} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="หมายเหตุ" />
+                            <button onClick={handleEditSave} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, color: "#000", fontWeight: 600 }}>บันทึกการแก้ไข</button>
+                        </BottomSheet>
+                    )}
+
+                    {toast && <div style={{ position: "fixed", bottom: 25, left: "50%", transform: "translateX(-50%)", background: T.elevated, border: `1px solid ${T.borderHi}`, padding: "12px 24px", borderRadius: 30, fontSize: 13, zIndex: 300 }}>{toast.msg}</div>}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
