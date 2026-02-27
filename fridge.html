@@ -68,7 +68,10 @@
             const [topUpAmount, setTopUpAmount] = useState("");
             const [editModal, setEditModal] = useState(null);
             const [editForm, setEditForm] = useState({ name: "", note: "", category: "" });
-            const [form, setForm] = useState({ name: "", qty: "", unit: "กรัม", category: "อื่นๆ", note: "" });
+            
+            // 💡 จุดที่ 1: แก้ค่าเริ่มต้นเป็น เนื้อสัตว์ และ กก. ให้ตรงกับหน้าจอ
+            const [form, setForm] = useState({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
+            
             const [toast, setToast] = useState(null);
             const [lastSync, setLastSync] = useState(null);
 
@@ -103,7 +106,8 @@
                 if (!form.name.trim() || !form.qty) return;
                 const it = { id: genId(), name: form.name.trim(), qty: parseFloat(form.qty), unit: form.unit, category: form.category, note: form.note };
                 await syncToSheet([it, ...items]);
-                setForm({ name: "", qty: "", unit: "กรัม", category: "อื่นๆ", note: "" });
+                // 💡 เคลียร์ค่าฟอร์มกลับเป็นค่าเริ่มต้น (เนื้อสัตว์ / กก.) หลังจากเพิ่มของเสร็จ
+                setForm({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
                 setShowAdd(false);
                 showToast(`เพิ่ม ${it.name} แล้ว`);
             };
@@ -216,13 +220,18 @@
                             <input placeholder="ชื่อของ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, name: e.target.value })} />
                             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
                                 <input placeholder="จำนวน" type="number" style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, qty: e.target.value })} />
-                                <select style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, unit: e.target.value })}>
+                                
+                                {/* 💡 จุดที่ 2: เพิ่ม value={form.unit} เพื่อบังคับให้จำตรงกับหน้าจอ */}
+                                <select value={form.unit} style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, unit: e.target.value })}>
                                     {UNITS.map(u => <option key={u}>{u}</option>)}
                                 </select>
                             </div>
-                            <select style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, category: e.target.value })}>
+                            
+                            {/* 💡 จุดที่ 3: เพิ่ม value={form.category} เพื่อบังคับให้จำตรงกับหน้าจอ */}
+                            <select value={form.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, category: e.target.value })}>
                                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                             </select>
+                            
                             <input placeholder="หมายเหตุ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 20 }} onChange={e => setForm({ ...form, note: e.target.value })} />
                             <button onClick={handleAdd} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, fontWeight: 600, color: "#000" }}>บันทึกรายการ</button>
                         </BottomSheet>
