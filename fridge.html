@@ -7,6 +7,9 @@
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
     <link rel="icon" href="https://emojicdn.elk.sh/❄️">
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0C0C0E">
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -32,10 +35,11 @@
         // 🔴 แปะ URL ที่ได้จาก Google Apps Script ตรงนี้ 🔴
         const API_URL = "https://script.google.com/macros/s/AKfycby0HHsN8RL1eZBvBiLNYAUt_aGvTNRC1pwKRu0BoUPltT5lyRpFt2KkstDFEqcP0ug2Cw/exec";
 
-        const CATEGORIES = ["เนื้อสัตว์", "ซีฟู้ด", "ผัก", "นม/ไข่", "เครื่องดื่ม", "เครื่องปรุง", "อาหารสำเร็จ", "อื่นๆ"];
+        // 🥐 เพิ่ม "เบเกอรี่" เข้าไปในระบบ
+        const CATEGORIES = ["เนื้อสัตว์", "ซีฟู้ด", "ผัก", "นม/ไข่", "เครื่องดื่ม", "เครื่องปรุง", "อาหารสำเร็จ", "เบเกอรี่", "อื่นๆ"];
         const UNITS = ["กก.", "กรัม", "ลิตร", "มล.", "ชิ้น", "กล่อง", "ถุง", "ขวด", "แถว", "แพ็ค"];
-        const CAT_ACCENT = { "เนื้อสัตว์": "#D4846A", "ซีฟู้ด": "#6ABED4", "ผัก": "#7EC8A0", "นม/ไข่": "#D4C896", "เครื่องดื่ม": "#89A8D4", "เครื่องปรุง": "#D4A06A", "อาหารสำเร็จ": "#B49AD4", "อื่นๆ": "#7A7A8A" };
-        const CAT_ICON = { "เนื้อสัตว์": "beef", "ซีฟู้ด": "fish", "ผัก": "leaf", "นม/ไข่": "milk", "เครื่องดื่ม": "glass-water", "เครื่องปรุง": "flame-kindling", "อาหารสำเร็จ": "utensils-crossed", "อื่นๆ": "box" };
+        const CAT_ACCENT = { "เนื้อสัตว์": "#D4846A", "ซีฟู้ด": "#6ABED4", "ผัก": "#7EC8A0", "นม/ไข่": "#D4C896", "เครื่องดื่ม": "#89A8D4", "เครื่องปรุง": "#D4A06A", "อาหารสำเร็จ": "#B49AD4", "เบเกอรี่": "#E2B47F", "อื่นๆ": "#7A7A8A" };
+        const CAT_ICON = { "เนื้อสัตว์": "beef", "ซีฟู้ด": "fish", "ผัก": "leaf", "นม/ไข่": "milk", "เครื่องดื่ม": "glass-water", "เครื่องปรุง": "flame-kindling", "อาหารสำเร็จ": "utensils-crossed", "เบเกอรี่": "croissant", "อื่นๆ": "box" };
         const T = { bg: "#0C0C0E", surface: "#131316", elevated: "#1C1C22", border: "rgba(255,255,255,0.07)", borderHi: "rgba(255,255,255,0.13)", muted: "#64647A", dim: "#38384A", accent: "#C8A96E", danger: "#D4726A", success: "#7EC8A0" };
 
         function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -69,7 +73,6 @@
             const [editModal, setEditModal] = useState(null);
             const [editForm, setEditForm] = useState({ name: "", note: "", category: "" });
             
-            // 💡 จุดที่ 1: แก้ค่าเริ่มต้นเป็น เนื้อสัตว์ และ กก. ให้ตรงกับหน้าจอ
             const [form, setForm] = useState({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
             
             const [toast, setToast] = useState(null);
@@ -106,7 +109,6 @@
                 if (!form.name.trim() || !form.qty) return;
                 const it = { id: genId(), name: form.name.trim(), qty: parseFloat(form.qty), unit: form.unit, category: form.category, note: form.note };
                 await syncToSheet([it, ...items]);
-                // 💡 เคลียร์ค่าฟอร์มกลับเป็นค่าเริ่มต้น (เนื้อสัตว์ / กก.) หลังจากเพิ่มของเสร็จ
                 setForm({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
                 setShowAdd(false);
                 showToast(`เพิ่ม ${it.name} แล้ว`);
@@ -166,7 +168,6 @@
                             ))}
                         </div>
 
-                        {/* 🔔 แถบแจ้งเตือนอัจฉริยะแบบตัดรายการ */}
                         {outOfStock.length > 0 && filterCat === "ทั้งหมด" && !search && (
                             <div style={{ background: `${T.danger}15`, border: `1px solid ${T.danger}30`, borderRadius: 12, padding: "16px", marginBottom: 20, animation: "up 0.3s ease" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -178,7 +179,6 @@
                                     }} style={{ fontSize: 11, background: T.danger, color: "#fff", padding: "5px 12px", borderRadius: 8, fontWeight: 600 }}>📋 สรุปรายการ</button>
                                 </div>
                                 <div style={{ fontSize: 11, color: `${T.danger}A0`, lineHeight: "1.6" }}>
-                                    {/* 💡 ตัดโชว์แค่ 5 ชื่อแรกเพื่อความคลีน */}
                                     {outOfStock.slice(0, 5).map(i => i.name).join(" · ")}
                                     {outOfStock.length > 5 && ` ...และอีก ${outOfStock.length - 5} รายการ`}
                                 </div>
@@ -213,7 +213,6 @@
                         )}
                     </main>
 
-                    {/* BottomSheets - Add, Use, TopUp, Edit */}
                     {showAdd && (
                         <BottomSheet onClose={() => setShowAdd(false)}>
                             <div style={{ fontWeight: 600, marginBottom: 20 }}>เพิ่มของใหม่</div>
@@ -221,13 +220,11 @@
                             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
                                 <input placeholder="จำนวน" type="number" style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, qty: e.target.value })} />
                                 
-                                {/* 💡 จุดที่ 2: เพิ่ม value={form.unit} เพื่อบังคับให้จำตรงกับหน้าจอ */}
                                 <select value={form.unit} style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, unit: e.target.value })}>
                                     {UNITS.map(u => <option key={u}>{u}</option>)}
                                 </select>
                             </div>
                             
-                            {/* 💡 จุดที่ 3: เพิ่ม value={form.category} เพื่อบังคับให้จำตรงกับหน้าจอ */}
                             <select value={form.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, category: e.target.value })}>
                                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                             </select>
