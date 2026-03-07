@@ -34,7 +34,6 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
 
-// 🔴 API URL ตัวใหม่ล่าสุดที่เชื่อมต่อกับระบบ History เรียบร้อยแล้ว 🔴
 const API_URL = "https://script.google.com/macros/s/AKfycbwMeoad-YBa0dXmjY5OjKrYuKxaC4lcW8BaX2gsKRxTxZSHj0MO4RM5cd-FkAnmV4WfoA/exec";
 
 const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
@@ -49,7 +48,6 @@ const T = {
   accent:"#C8A96E", danger:"#D4726A", success:"#7EC8A0",
 };
 
-// ── Action type config for history display ──
 const ACTION_CONFIG = {
   add:    { label:"เพิ่ม",   icon:"plus",        color:"#7EC8A0" },
   use:    { label:"ใช้",     icon:"minus",       color:"#D4726A" },
@@ -80,32 +78,21 @@ function InpStyle(extra={}) {
   return {width:"100%",background:T.surface,border:`1px solid ${T.border}`,padding:"13px 14px",borderRadius:10,color:T.text,outline:"none",transition:"border-color 0.15s",...extra};
 }
 
-// ── Format timestamp for history ──
-function fmtHistoryTime(iso) {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now - d;
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffH   = Math.floor(diffMs / 3600000);
-  const diffD   = Math.floor(diffMs / 86400000);
-  if (diffMin < 1)  return "เมื่อกี้";
-  if (diffMin < 60) return `${diffMin} นาทีที่แล้ว`;
-  if (diffH < 24)   return `${diffH} ชั่วโมงที่แล้ว`;
-  if (diffD === 1)  return `เมื่อวาน ${d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}`;
-  return d.toLocaleDateString("th-TH",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
-}
-
-// ── Group history by date ──
+// 🛡️ เพิ่มตัวเช็คความถูกต้องของวันที่
 function groupByDate(history) {
   const groups = {};
   history.forEach(h => {
+    if (!h.at) return; // ข้ามถ้าไม่มีวันที่
     const d = new Date(h.at);
+    if (isNaN(d.getTime())) return; // ข้ามถ้าวันที่พัง (แถวว่าง)
+    
     const today = new Date();
     const yesterday = new Date(); yesterday.setDate(today.getDate()-1);
     let label;
     if (d.toDateString()===today.toDateString()) label = "วันนี้";
     else if (d.toDateString()===yesterday.toDateString()) label = "เมื่อวาน";
     else label = d.toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short"});
+    
     if (!groups[label]) groups[label] = [];
     groups[label].push(h);
   });
@@ -117,13 +104,13 @@ function App() {
   const [history,      setHistory]     = useState([]); 
   const [loading,      setLoading]     = useState(true);
   const [showAdd,      setShowAdd]     = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [filterCat,    setFilterCat]  = useState("ทั้งหมด");
+  const [showHistory, setShowHistory]  = useState(false);
+  const [filterCat,    setFilterCat]   = useState("ทั้งหมด");
   const [search,       setSearch]      = useState("");
   const [useModal,     setUseModal]    = useState(null);
   const [useAmount,    setUseAmount]   = useState("");
   const [topUpModal,   setTopUpModal]  = useState(null);
-  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpAmount,  setTopUpAmount] = useState("");
   const [editModal,    setEditModal]   = useState(null);
   const [editForm,     setEditForm]    = useState({name:"",note:"",category:""});
   const [form,         setForm]        = useState({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
@@ -136,30 +123,36 @@ function App() {
     id: genId(), at: new Date().toISOString(), action, name, ...extra,
   });
 
-  // ── Load from API (items + history) ──
   const loadItems = useCallback(async (showLoading=false) => {
     if (showLoading) setLoading(true);
     try {
       const r = await fetch(API_URL);
       const data = await r.json();
+      
+      // 🛡️ กรองเฉพาะแถวที่มีชื่อของจริงๆ (ตัดแถวว่างใน Google Sheets ทิ้ง)
+      let cleanItems = [];
+      let cleanHistory = [];
+      
       if (Array.isArray(data)) {
-        setItems(data);
+        cleanItems = data.filter(i => i && i.name);
       } else {
-        setItems(data.items || []);
-        if (data.history) setHistory(data.history);
+        cleanItems = (data.items || []).filter(i => i && i.name);
+        cleanHistory = (data.history || []).filter(h => h && h.at && h.action);
       }
+      
+      setItems(cleanItems);
+      setHistory(cleanHistory);
       setLastSync(new Date());
-    } catch(err) { console.error(err); }
+    } catch(err) { 
+      console.error("Fetch Error:", err); 
+    }
     setLoading(false);
   }, []);
 
-  // ── Sync to API ──
   const syncToSheet = async (nextItems, nextHistory) => {
-    // อัปเดตหน้าจอทันที ไม่ต้องรอโหลด
     setItems(nextItems);
     if (nextHistory) setHistory(nextHistory);
     try {
-      // แอบส่งข้อมูลให้ Google Sheets เบื้องหลัง
       await fetch(API_URL, {
         method:"POST",
         body: JSON.stringify({ action:"saveAll", items: nextItems, history: nextHistory }),
@@ -174,7 +167,6 @@ function App() {
     return ()=>clearInterval(t);
   }, [loadItems]);
 
-  // ── Actions ──
   const handleAdd = () => {
     if (!form.name.trim()||!form.qty) return;
     const it = { id:genId(), name:form.name.trim(), qty:parseFloat(form.qty), unit:form.unit, category:form.category, note:form.note };
@@ -220,19 +212,17 @@ function App() {
   };
 
   const outOfStock = items.filter(i=>i.qty===0);
+  
+  // 🛡️ ใส่ String() ป้องกันแอปแครชถ้าชื่อสินค้าเป็นตัวเลข
   const filtered   = items
-    .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&i.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&String(i.name||"").toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>(a.qty===0?1:0)-(b.qty===0?1:0));
 
   const histGroups = groupByDate([...history]);
-
-  // ── Shared input style ──
   const inp = InpStyle();
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,paddingBottom:60}}>
-
-      {/* ── Header ── */}
       <header style={{position:"sticky",top:0,zIndex:100,background:`${T.bg}E8`,backdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,padding:"16px 20px"}}>
         <div style={{maxWidth:560,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
@@ -242,7 +232,6 @@ function App() {
             </div>
           </div>
           <div style={{display:"flex",gap:8}}>
-            {/* History button */}
             <button onClick={()=>setShowHistory(true)} className="icon-btn" title="ประวัติการใช้งาน" style={{
               background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,
               padding:"8px 11px",color:T.muted,cursor:"pointer",display:"flex",alignItems:"center",
@@ -254,12 +243,10 @@ function App() {
                 background:T.accent,display:"block",
               }}/>}
             </button>
-            {/* Refresh button */}
             <button onClick={()=>loadItems(true)} className="icon-btn" style={{
               background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,
               padding:"8px 12px",color:T.muted,cursor:"pointer",transition:"border-color 0.15s,color 0.15s",
             }}>↻</button>
-            {/* Add button */}
             <button onClick={()=>setShowAdd(true)} style={{
               background:T.accent,border:"none",borderRadius:8,
               color:"#000",padding:"8px 18px",fontWeight:600,fontSize:13,cursor:"pointer",
@@ -269,15 +256,12 @@ function App() {
       </header>
 
       <main style={{maxWidth:560,margin:"0 auto",padding:"20px 16px"}}>
-
-        {/* Search */}
         <div style={{position:"relative",marginBottom:16}}>
           <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:T.dim,pointerEvents:"none",fontSize:15}}>⌕</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาของ..."
             style={{...inp,paddingLeft:38,borderRadius:12}}/>
         </div>
 
-        {/* Category filter */}
         <div className="no-scrollbar" style={{display:"flex",gap:8,overflowX:"auto",marginBottom:22}}>
           {["ทั้งหมด",...CATEGORIES].map(cat=>(
             <button key={cat} onClick={()=>setFilterCat(cat)} style={{
@@ -290,7 +274,6 @@ function App() {
           ))}
         </div>
 
-        {/* Out-of-stock banner */}
         {outOfStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
           <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -310,7 +293,6 @@ function App() {
           </div>
         )}
 
-        {/* Item list */}
         {loading?(
           <div style={{textAlign:"center",color:T.dim,marginTop:60,fontSize:13}}>กำลังซิงค์...</div>
         ):filtered.length===0?(
@@ -357,7 +339,6 @@ function App() {
         )}
       </main>
 
-      {/* ── History Sheet ── */}
       {showHistory&&(
         <BottomSheet onClose={()=>setShowHistory(false)} maxH="88vh">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
@@ -382,20 +363,23 @@ function App() {
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {Object.entries(histGroups).map(([dateLabel, entries])=>(
                 <div key={dateLabel}>
-                  {/* Date group label */}
                   <div style={{fontSize:11,color:T.muted,fontWeight:600,letterSpacing:"0.5px",padding:"16px 0 8px",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`,marginBottom:0}}>
                     {dateLabel}
                   </div>
                   {entries.map((h,i)=>{
                     const cfg = ACTION_CONFIG[h.action]||ACTION_CONFIG.edit;
+                    
+                    // 🛡️ ป้องกัน error เวลานำวันที่มาโชว์
+                    const d = new Date(h.at);
+                    const timeStr = !isNaN(d.getTime()) ? d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}) : "—";
+
                     return (
-                      <div key={h.id} style={{
+                      <div key={h.id||i} style={{
                         display:"flex",alignItems:"flex-start",gap:12,
                         padding:"12px 0",
                         borderBottom:i<entries.length-1?`1px solid ${T.border}`:"none",
                         animation:"up 0.2s ease",
                       }}>
-                        {/* Icon badge */}
                         <div style={{
                           width:32,height:32,borderRadius:8,flexShrink:0,
                           background:`${cfg.color}15`,border:`1px solid ${cfg.color}28`,
@@ -404,7 +388,6 @@ function App() {
                         }}>
                           <LucideIcon name={cfg.icon} size={14} color={cfg.color}/>
                         </div>
-                        {/* Content */}
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
                             <span style={{
@@ -428,9 +411,8 @@ function App() {
                             <div style={{fontSize:11,color:T.dim,marginTop:3}}>หมายเหตุ: {h.note}</div>
                           )}
                         </div>
-                        {/* Time */}
                         <div style={{fontSize:11,color:T.dim,whiteSpace:"nowrap",flexShrink:0,marginTop:2,fontFamily:"'DM Mono',monospace"}}>
-                          {new Date(h.at).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}
+                          {timeStr}
                         </div>
                       </div>
                     );
@@ -442,7 +424,6 @@ function App() {
         </BottomSheet>
       )}
 
-      {/* ── Add Sheet ── */}
       {showAdd&&(
         <BottomSheet onClose={()=>setShowAdd(false)}>
           <div style={{fontSize:15,fontWeight:600,marginBottom:20}}>เพิ่มของใหม่</div>
@@ -468,7 +449,6 @@ function App() {
         </BottomSheet>
       )}
 
-      {/* ── Top-Up Sheet ── */}
       {topUpModal&&(
         <BottomSheet onClose={()=>setTopUpModal(null)}>
           <div style={{marginBottom:20}}>
@@ -486,7 +466,6 @@ function App() {
         </BottomSheet>
       )}
 
-      {/* ── Use Sheet ── */}
       {useModal&&(
         <BottomSheet onClose={()=>setUseModal(null)}>
           <div style={{marginBottom:20}}>
@@ -503,7 +482,6 @@ function App() {
         </BottomSheet>
       )}
 
-      {/* ── Edit Sheet ── */}
       {editModal&&(
         <BottomSheet onClose={()=>setEditModal(null)}>
           <div style={{marginBottom:20}}>
@@ -535,7 +513,6 @@ function App() {
         </BottomSheet>
       )}
 
-      {/* ── Toast ── */}
       {toast&&(
         <div style={{position:"fixed",bottom:25,left:"50%",transform:"translateX(-50%)",background:T.elevated,border:`1px solid ${T.borderHi}`,padding:"11px 22px",borderRadius:30,fontSize:13,zIndex:300,whiteSpace:"nowrap",boxShadow:"0 8px 40px rgba(0,0,0,0.6)",animation:"up 0.2s ease"}}>
           {toast.msg}
