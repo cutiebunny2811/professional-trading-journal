@@ -3,268 +3,549 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>สต๊อกตู้เย็น - Clean & Sync</title>
+    <title>สต๊อกตู้เย็น</title>
+    
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
     <link rel="icon" href="https://emojicdn.elk.sh/❄️">
-    
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest_fridge.json">
     <meta name="theme-color" content="#0C0C0E">
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
-        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-        body{margin:0;background:#0C0C0E;font-family:'DM Sans','Noto Sans Thai',sans-serif;color:#E2E2EC}
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .row:hover .acts { opacity: 1 !important; }
-        @keyframes up { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+        body{background:#0C0C0E;font-family:'DM Sans','Noto Sans Thai',sans-serif;color:#E2E2EC}
+        input,select,textarea,button{font-family:'DM Sans','Noto Sans Thai',sans-serif}
+        input::placeholder,textarea::placeholder{color:#38384A}
+        select option{background:#1C1C22}
+        .no-scrollbar::-webkit-scrollbar{display:none}
+        .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+        .row:hover .acts{opacity:1!important}
+        .icon-btn:hover{border-color:rgba(255,255,255,0.18)!important;color:#E2E2EC!important}
+        @keyframes up{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     </style>
 </head>
 <body>
-    <div id="root"></div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
+// 🔴 API URL ตัวใหม่ล่าสุดที่เชื่อมต่อกับระบบ History เรียบร้อยแล้ว 🔴
+const API_URL = "https://script.google.com/macros/s/AKfycbwMeoad-YBa0dXmjY5OjKrYuKxaC4lcW8BaX2gsKRxTxZSHj0MO4RM5cd-FkAnmV4WfoA/exec";
 
-        // 🔴 แปะ URL ที่ได้จาก Google Apps Script ตรงนี้ 🔴
-        const API_URL = "https://script.google.com/macros/s/AKfycby0HHsN8RL1eZBvBiLNYAUt_aGvTNRC1pwKRu0BoUPltT5lyRpFt2KkstDFEqcP0ug2Cw/exec";
+const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
+const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค"];
+const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
+const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
 
-        // 🥐 เพิ่ม "เบเกอรี่" เข้าไปในระบบ
-        const CATEGORIES = ["เนื้อสัตว์", "ซีฟู้ด", "ผัก", "นม/ไข่", "เครื่องดื่ม", "เครื่องปรุง", "อาหารสำเร็จ", "เบเกอรี่", "อื่นๆ"];
-        const UNITS = ["กก.", "กรัม", "ลิตร", "มล.", "ชิ้น", "กล่อง", "ถุง", "ขวด", "แถว", "แพ็ค"];
-        const CAT_ACCENT = { "เนื้อสัตว์": "#D4846A", "ซีฟู้ด": "#6ABED4", "ผัก": "#7EC8A0", "นม/ไข่": "#D4C896", "เครื่องดื่ม": "#89A8D4", "เครื่องปรุง": "#D4A06A", "อาหารสำเร็จ": "#B49AD4", "เบเกอรี่": "#E2B47F", "อื่นๆ": "#7A7A8A" };
-        const CAT_ICON = { "เนื้อสัตว์": "beef", "ซีฟู้ด": "fish", "ผัก": "leaf", "นม/ไข่": "milk", "เครื่องดื่ม": "glass-water", "เครื่องปรุง": "flame-kindling", "อาหารสำเร็จ": "utensils-crossed", "เบเกอรี่": "croissant", "อื่นๆ": "box" };
-        const T = { bg: "#0C0C0E", surface: "#131316", elevated: "#1C1C22", border: "rgba(255,255,255,0.07)", borderHi: "rgba(255,255,255,0.13)", muted: "#64647A", dim: "#38384A", accent: "#C8A96E", danger: "#D4726A", success: "#7EC8A0" };
+const T = {
+  bg:"#0C0C0E", surface:"#131316", elevated:"#1C1C22",
+  border:"rgba(255,255,255,0.07)", borderHi:"rgba(255,255,255,0.13)",
+  text:"#E2E2EC", muted:"#64647A", dim:"#38384A",
+  accent:"#C8A96E", danger:"#D4726A", success:"#7EC8A0",
+};
 
-        function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+// ── Action type config for history display ──
+const ACTION_CONFIG = {
+  add:    { label:"เพิ่ม",   icon:"plus",        color:"#7EC8A0" },
+  use:    { label:"ใช้",     icon:"minus",       color:"#D4726A" },
+  topup:  { label:"เติม",    icon:"arrow-up",    color:"#89A8D4" },
+  delete: { label:"ลบ",     icon:"trash-2",     color:"#7A7A8A" },
+  edit:   { label:"แก้ไข",  icon:"pencil",      color:"#C8A96E" },
+};
 
-        function BottomSheet({ onClose, children }) {
-            return (
-                <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-                    <div onClick={e => e.stopPropagation()} style={{ background: T.elevated, borderTop: `1px solid ${T.borderHi}`, borderRadius: "20px 20px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 560, animation: "slideUp 0.3s cubic-bezier(.32,.72,0,1)" }}>
-                        {children}
+function genId() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+function LucideIcon({ name, size=16, color="currentColor", style={} }) {
+  const ref = useRef(null);
+  useEffect(() => { if(ref.current && window.lucide) window.lucide.createIcons(); },[name]);
+  return <i ref={ref} data-lucide={name} style={{width:size,height:size,color,display:"inline-flex",...style}}></i>;
+}
+
+function BottomSheet({ onClose, children, maxH }) {
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(14px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:T.elevated,borderTop:`1px solid ${T.borderHi}`,borderRadius:"20px 20px 0 0",padding:"28px 24px 44px",width:"100%",maxWidth:560,animation:"slideUp 0.28s cubic-bezier(.32,.72,0,1)",maxHeight:maxH||"80vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function InpStyle(extra={}) {
+  return {width:"100%",background:T.surface,border:`1px solid ${T.border}`,padding:"13px 14px",borderRadius:10,color:T.text,outline:"none",transition:"border-color 0.15s",...extra};
+}
+
+// ── Format timestamp for history ──
+function fmtHistoryTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH   = Math.floor(diffMs / 3600000);
+  const diffD   = Math.floor(diffMs / 86400000);
+  if (diffMin < 1)  return "เมื่อกี้";
+  if (diffMin < 60) return `${diffMin} นาทีที่แล้ว`;
+  if (diffH < 24)   return `${diffH} ชั่วโมงที่แล้ว`;
+  if (diffD === 1)  return `เมื่อวาน ${d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}`;
+  return d.toLocaleDateString("th-TH",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+}
+
+// ── Group history by date ──
+function groupByDate(history) {
+  const groups = {};
+  history.forEach(h => {
+    const d = new Date(h.at);
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(today.getDate()-1);
+    let label;
+    if (d.toDateString()===today.toDateString()) label = "วันนี้";
+    else if (d.toDateString()===yesterday.toDateString()) label = "เมื่อวาน";
+    else label = d.toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short"});
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(h);
+  });
+  return groups;
+}
+
+function App() {
+  const [items,        setItems]       = useState([]);
+  const [history,      setHistory]     = useState([]); 
+  const [loading,      setLoading]     = useState(true);
+  const [showAdd,      setShowAdd]     = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [filterCat,    setFilterCat]  = useState("ทั้งหมด");
+  const [search,       setSearch]      = useState("");
+  const [useModal,     setUseModal]    = useState(null);
+  const [useAmount,    setUseAmount]   = useState("");
+  const [topUpModal,   setTopUpModal]  = useState(null);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [editModal,    setEditModal]   = useState(null);
+  const [editForm,     setEditForm]    = useState({name:"",note:"",category:""});
+  const [form,         setForm]        = useState({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
+  const [toast,        setToast]       = useState(null);
+  const [lastSync,     setLastSync]    = useState(null);
+
+  const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
+
+  const addLog = (action, name, extra={}) => ({
+    id: genId(), at: new Date().toISOString(), action, name, ...extra,
+  });
+
+  // ── Load from API (items + history) ──
+  const loadItems = useCallback(async (showLoading=false) => {
+    if (showLoading) setLoading(true);
+    try {
+      const r = await fetch(API_URL);
+      const data = await r.json();
+      if (Array.isArray(data)) {
+        setItems(data);
+      } else {
+        setItems(data.items || []);
+        if (data.history) setHistory(data.history);
+      }
+      setLastSync(new Date());
+    } catch(err) { console.error(err); }
+    setLoading(false);
+  }, []);
+
+  // ── Sync to API ──
+  const syncToSheet = async (nextItems, nextHistory) => {
+    // อัปเดตหน้าจอทันที ไม่ต้องรอโหลด
+    setItems(nextItems);
+    if (nextHistory) setHistory(nextHistory);
+    try {
+      // แอบส่งข้อมูลให้ Google Sheets เบื้องหลัง
+      await fetch(API_URL, {
+        method:"POST",
+        body: JSON.stringify({ action:"saveAll", items: nextItems, history: nextHistory }),
+      });
+      setLastSync(new Date());
+    } catch { showToast("บันทึกไม่สำเร็จ","err"); }
+  };
+
+  useEffect(() => {
+    loadItems(true);
+    const t = setInterval(()=>loadItems(false), 15000);
+    return ()=>clearInterval(t);
+  }, [loadItems]);
+
+  // ── Actions ──
+  const handleAdd = () => {
+    if (!form.name.trim()||!form.qty) return;
+    const it = { id:genId(), name:form.name.trim(), qty:parseFloat(form.qty), unit:form.unit, category:form.category, note:form.note };
+    const log = addLog("add", it.name, { amount:it.qty, unit:it.unit, category:it.category });
+    setShowAdd(false);
+    setForm({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
+    showToast(`เพิ่ม ${it.name} แล้ว`);
+    syncToSheet([it,...items], [log,...history].slice(0,200));
+  };
+
+  const handleUse = () => {
+    if (!useModal||!useAmount) return;
+    const amt = parseFloat(useAmount);
+    const nq  = Math.max(0, useModal.qty - amt);
+    const log = addLog("use", useModal.name, { amount:amt, unit:useModal.unit });
+    setUseModal(null); setUseAmount("");
+    showToast(nq===0 ? `${useModal.name} หมดแล้ว` : `ใช้ไป ${amt} ${useModal.unit}`, nq===0?"warn":"ok");
+    syncToSheet(items.map(i=>i.id===useModal.id?{...i,qty:nq}:i), [log,...history].slice(0,200));
+  };
+
+  const handleTopUp = () => {
+    if (!topUpModal||!topUpAmount) return;
+    const amt = parseFloat(topUpAmount);
+    const log = addLog("topup", topUpModal.name, { amount:amt, unit:topUpModal.unit });
+    setTopUpModal(null); setTopUpAmount("");
+    showToast(`เติม +${amt} ${topUpModal.unit}`);
+    syncToSheet(items.map(i=>i.id===topUpModal.id?{...i,qty:i.qty+amt}:i), [log,...history].slice(0,200));
+  };
+
+  const handleEditSave = () => {
+    if (!editModal||!editForm.name.trim()) return;
+    const log = addLog("edit", editModal.name, { newName: editForm.name.trim(), note: editForm.note });
+    setEditModal(null);
+    showToast("แก้ไขแล้ว");
+    syncToSheet(items.map(i=>i.id===editModal.id?{...i,name:editForm.name.trim(),note:editForm.note,category:editForm.category}:i), [log,...history].slice(0,200));
+  };
+
+  const handleDelete = (id, name) => {
+    if (!confirm(`ลบ "${name}" ออกจากรายการ?`)) return;
+    const log = addLog("delete", name);
+    showToast(`ลบ ${name} ออกแล้ว`,"dim");
+    syncToSheet(items.filter(i=>i.id!==id), [log,...history].slice(0,200));
+  };
+
+  const outOfStock = items.filter(i=>i.qty===0);
+  const filtered   = items
+    .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&i.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>(a.qty===0?1:0)-(b.qty===0?1:0));
+
+  const histGroups = groupByDate([...history]);
+
+  // ── Shared input style ──
+  const inp = InpStyle();
+
+  return (
+    <div style={{minHeight:"100vh",background:T.bg,paddingBottom:60}}>
+
+      {/* ── Header ── */}
+      <header style={{position:"sticky",top:0,zIndex:100,background:`${T.bg}E8`,backdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,padding:"16px 20px"}}>
+        <div style={{maxWidth:560,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:600,fontSize:16}}>❄︎&nbsp;&nbsp;ตู้เย็นครัว</div>
+            <div style={{fontSize:11,color:T.muted,marginTop:3}}>
+              {items.length} รายการ{outOfStock.length>0&&<span style={{color:T.danger}}> · หมด {outOfStock.length}</span>} · {lastSync?.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})||"—"}
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            {/* History button */}
+            <button onClick={()=>setShowHistory(true)} className="icon-btn" title="ประวัติการใช้งาน" style={{
+              background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,
+              padding:"8px 11px",color:T.muted,cursor:"pointer",display:"flex",alignItems:"center",
+              transition:"border-color 0.15s,color 0.15s",position:"relative",
+            }}>
+              <LucideIcon name="clock" size={15}/>
+              {history.length>0&&<span style={{
+                position:"absolute",top:5,right:5,width:6,height:6,borderRadius:"50%",
+                background:T.accent,display:"block",
+              }}/>}
+            </button>
+            {/* Refresh button */}
+            <button onClick={()=>loadItems(true)} className="icon-btn" style={{
+              background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,
+              padding:"8px 12px",color:T.muted,cursor:"pointer",transition:"border-color 0.15s,color 0.15s",
+            }}>↻</button>
+            {/* Add button */}
+            <button onClick={()=>setShowAdd(true)} style={{
+              background:T.accent,border:"none",borderRadius:8,
+              color:"#000",padding:"8px 18px",fontWeight:600,fontSize:13,cursor:"pointer",
+            }}>+ เพิ่มของ</button>
+          </div>
+        </div>
+      </header>
+
+      <main style={{maxWidth:560,margin:"0 auto",padding:"20px 16px"}}>
+
+        {/* Search */}
+        <div style={{position:"relative",marginBottom:16}}>
+          <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:T.dim,pointerEvents:"none",fontSize:15}}>⌕</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาของ..."
+            style={{...inp,paddingLeft:38,borderRadius:12}}/>
+        </div>
+
+        {/* Category filter */}
+        <div className="no-scrollbar" style={{display:"flex",gap:8,overflowX:"auto",marginBottom:22}}>
+          {["ทั้งหมด",...CATEGORIES].map(cat=>(
+            <button key={cat} onClick={()=>setFilterCat(cat)} style={{
+              background:filterCat===cat?T.surface:"transparent",
+              border:`1px solid ${filterCat===cat?T.borderHi:T.border}`,
+              borderRadius:20,color:filterCat===cat?T.text:T.muted,
+              padding:"5px 16px",whiteSpace:"nowrap",fontSize:12,cursor:"pointer",
+              fontWeight:filterCat===cat?500:400,transition:"all 0.15s",
+            }}>{cat}</button>
+          ))}
+        </div>
+
+        {/* Out-of-stock banner */}
+        {outOfStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
+          <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:13,fontWeight:600,color:T.danger}}>หมดแล้ว {outOfStock.length} รายการ</div>
+              <button onClick={()=>{
+                const list = outOfStock.map(i=>`• ${i.name}`).join("\n");
+                navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
+                showToast("คัดลอกรายการแล้ว วางใน LINE ได้เลย");
+              }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none"}}>
+                📋 สรุปรายการ
+              </button>
+            </div>
+            <div style={{fontSize:11,color:`${T.danger}90`,lineHeight:1.7}}>
+              {outOfStock.slice(0,5).map(i=>i.name).join(" · ")}
+              {outOfStock.length>5&&` ...และอีก ${outOfStock.length-5} รายการ`}
+            </div>
+          </div>
+        )}
+
+        {/* Item list */}
+        {loading?(
+          <div style={{textAlign:"center",color:T.dim,marginTop:60,fontSize:13}}>กำลังซิงค์...</div>
+        ):filtered.length===0?(
+          <div style={{textAlign:"center",color:T.dim,marginTop:60,fontSize:13}}>
+            {search?"ไม่พบรายการที่ค้นหา":"ยังไม่มีของในตู้เย็น"}
+          </div>
+        ):(
+          <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${T.border}`}}>
+            {filtered.map((item,idx)=>{
+              const accent = CAT_ACCENT[item.category]||T.muted;
+              const empty  = item.qty===0;
+              return (
+                <div key={item.id} className="row" style={{
+                  background:T.surface,borderTop:idx>0?`1px solid ${T.border}`:"none",
+                  borderLeft:`3px solid ${empty?T.danger:accent}`,
+                  padding:"14px 16px",display:"flex",alignItems:"center",gap:14,
+                  opacity:empty?0.65:1,transition:"opacity 0.2s",animation:"up 0.2s ease",
+                }}>
+                  <div style={{width:38,height:38,borderRadius:10,flexShrink:0,background:`${empty?T.danger:accent}15`,border:`1px solid ${empty?T.danger:accent}25`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <LucideIcon name={empty?"x":CAT_ICON[item.category]||"box"} color={empty?T.danger:accent} size={17}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontSize:14,fontWeight:500,color:empty?T.muted:T.text,textDecoration:empty?"line-through":"none"}}>{item.name}</span>
+                      {empty&&<span style={{fontSize:9,color:T.danger,border:`1px solid ${T.danger}35`,padding:"1px 5px",borderRadius:4,fontFamily:"'DM Mono',monospace",letterSpacing:"0.5px"}}>EMPTY</span>}
                     </div>
+                    <div style={{fontSize:12,color:empty?T.danger:accent,fontFamily:"'DM Mono',monospace",fontWeight:500}}>
+                      {empty?"0":item.qty} {item.unit}
+                    </div>
+                    {item.note&&<div style={{fontSize:11,color:T.muted,marginTop:4}}>{item.note}</div>}
+                  </div>
+                  <div className="acts" style={{display:"flex",gap:6,opacity:0.35,transition:"opacity 0.18s",flexShrink:0}}>
+                    <button onClick={()=>{setTopUpModal(item);setTopUpAmount("");}} style={{background:`${T.success}15`,border:`1px solid ${T.success}28`,color:T.success,padding:"5px 11px",borderRadius:7,fontWeight:700,fontSize:14,cursor:"pointer"}}>+</button>
+                    {!empty&&<button onClick={()=>{setUseModal(item);setUseAmount("");}} style={{background:T.elevated,border:`1px solid ${T.border}`,color:T.muted,padding:"5px 11px",borderRadius:7,fontSize:12,cursor:"pointer"}}>ใช้</button>}
+                    <button onClick={()=>{setEditModal(item);setEditForm({name:item.name,note:item.note||"",category:item.category});}} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>
+                      <LucideIcon name="pencil" size={13} color={T.muted}/>
+                    </button>
+                    <button onClick={()=>handleDelete(item.id,item.name)} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",color:T.dim,fontSize:13,cursor:"pointer",lineHeight:1}}>✕</button>
+                  </div>
                 </div>
-            );
-        }
+              );
+            })}
+          </div>
+        )}
+      </main>
 
-        function LucideIcon({ name, size = 16, color = "currentColor" }) {
-            const iconRef = useRef(null);
-            useEffect(() => { if (iconRef.current) lucide.createIcons(); }, [name]);
-            return <i ref={iconRef} data-lucide={name} style={{ width: size, height: size, color: color }}></i>;
-        }
+      {/* ── History Sheet ── */}
+      {showHistory&&(
+        <BottomSheet onClose={()=>setShowHistory(false)} maxH="88vh">
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:600,color:T.text}}>ประวัติการใช้งาน</div>
+              <div style={{fontSize:11,color:T.muted,marginTop:3}}>{history.length} รายการล่าสุด</div>
+            </div>
+            {history.length>0&&(
+              <button onClick={()=>{if(confirm("ล้างประวัติทั้งหมด?"))syncToSheet(items,[]);}} style={{
+                fontSize:11,color:T.muted,background:"transparent",border:`1px solid ${T.border}`,
+                borderRadius:8,padding:"5px 12px",cursor:"pointer",
+              }}>ล้างประวัติ</button>
+            )}
+          </div>
 
-        function App() {
-            const [items, setItems] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [showAdd, setShowAdd] = useState(false);
-            const [filterCat, setFilterCat] = useState("ทั้งหมด");
-            const [search, setSearch] = useState("");
-            const [useModal, setUseModal] = useState(null);
-            const [useAmount, setUseAmount] = useState("");
-            const [topUpModal, setTopUpModal] = useState(null);
-            const [topUpAmount, setTopUpAmount] = useState("");
-            const [editModal, setEditModal] = useState(null);
-            const [editForm, setEditForm] = useState({ name: "", note: "", category: "" });
-            
-            const [form, setForm] = useState({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
-            
-            const [toast, setToast] = useState(null);
-            const [lastSync, setLastSync] = useState(null);
-
-            const showToast = (msg, type = "ok") => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800); };
-
-            const loadItems = useCallback(async (showLoading = false) => {
-                if (showLoading) setLoading(true);
-                try {
-                    const r = await fetch(API_URL);
-                    const data = await r.json();
-                    setItems(data);
-                    setLastSync(new Date());
-                } catch (err) { console.error(err); }
-                setLoading(false);
-            }, []);
-
-            const syncToSheet = async (nextItems) => {
-                setItems(nextItems);
-                try {
-                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveAll', items: nextItems }) });
-                    setLastSync(new Date());
-                } catch { showToast("บันทึกไม่สำเร็จ", "err"); }
-            };
-
-            useEffect(() => {
-                loadItems(true);
-                const t = setInterval(() => loadItems(false), 15000);
-                return () => clearInterval(t);
-            }, [loadItems]);
-
-            const handleAdd = async () => {
-                if (!form.name.trim() || !form.qty) return;
-                const it = { id: genId(), name: form.name.trim(), qty: parseFloat(form.qty), unit: form.unit, category: form.category, note: form.note };
-                await syncToSheet([it, ...items]);
-                setForm({ name: "", qty: "", unit: "กก.", category: "เนื้อสัตว์", note: "" });
-                setShowAdd(false);
-                showToast(`เพิ่ม ${it.name} แล้ว`);
-            };
-
-            const handleUse = async () => {
-                const amt = parseFloat(useAmount);
-                const nq = Math.max(0, useModal.qty - amt);
-                await syncToSheet(items.map(i => i.id === useModal.id ? { ...i, qty: nq } : i));
-                setUseModal(null); setUseAmount("");
-                showToast(nq === 0 ? `${useModal.name} หมดแล้ว` : `ใช้ไป ${amt}`);
-            };
-
-            const handleTopUp = async () => {
-                const amt = parseFloat(topUpAmount);
-                await syncToSheet(items.map(i => i.id === topUpModal.id ? { ...i, qty: i.qty + amt } : i));
-                setTopUpModal(null); setTopUpAmount("");
-                showToast(`เติม ${amt} ${topUpModal.unit}`);
-            };
-
-            const handleEditSave = async () => {
-                await syncToSheet(items.map(i => i.id === editModal.id ? { ...i, name: editForm.name.trim(), note: editForm.note, category: editForm.category } : i));
-                setEditModal(null);
-                showToast("แก้ไขแล้ว");
-            };
-
-            const handleDelete = async (id, name) => {
-                if(!confirm(`ลบ ${name}?`)) return;
-                await syncToSheet(items.filter(i => i.id !== id));
-            };
-
-            const outOfStock = items.filter(i => i.qty === 0);
-            const filtered = items.filter(i => (filterCat === "ทั้งหมด" || i.category === filterCat) && i.name.toLowerCase().includes(search.toLowerCase()))
-                                  .sort((a,b) => (a.qty===0?1:0)-(b.qty===0?1:0));
-
-            return (
-                <div style={{ minHeight: "100vh", background: T.bg, paddingBottom: 60 }}>
-                    <header style={{ position: "sticky", top: 0, zIndex: 100, background: `${T.bg}E0`, backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "16px 20px" }}>
-                        <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <div>
-                                <div style={{ fontWeight: 600, fontSize: 16 }}>❄︎&nbsp;&nbsp;ตู้เย็นครัว</div>
-                                <div style={{ fontSize: 11, color: T.muted }}>{items.length} รายการ · {lastSync?.toLocaleTimeString() || "—"}</div>
-                            </div>
-                            <div style={{ display: "flex", gap: 10 }}>
-                                <button onClick={() => loadItems(true)} style={{ border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted }}>↻</button>
-                                <button onClick={() => setShowAdd(true)} style={{ background: T.accent, borderRadius: 8, color: "#000", padding: "8px 18px", fontWeight: 600, fontSize: 13 }}>+ เพิ่มของ</button>
-                            </div>
+          {history.length===0?(
+            <div style={{textAlign:"center",color:T.dim,padding:"40px 0",fontSize:13}}>
+              <LucideIcon name="clock" size={32} color={T.dim} style={{marginBottom:12,display:"block",margin:"0 auto 12px"}}/>
+              ยังไม่มีประวัติการใช้งาน
+            </div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:0}}>
+              {Object.entries(histGroups).map(([dateLabel, entries])=>(
+                <div key={dateLabel}>
+                  {/* Date group label */}
+                  <div style={{fontSize:11,color:T.muted,fontWeight:600,letterSpacing:"0.5px",padding:"16px 0 8px",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`,marginBottom:0}}>
+                    {dateLabel}
+                  </div>
+                  {entries.map((h,i)=>{
+                    const cfg = ACTION_CONFIG[h.action]||ACTION_CONFIG.edit;
+                    return (
+                      <div key={h.id} style={{
+                        display:"flex",alignItems:"flex-start",gap:12,
+                        padding:"12px 0",
+                        borderBottom:i<entries.length-1?`1px solid ${T.border}`:"none",
+                        animation:"up 0.2s ease",
+                      }}>
+                        {/* Icon badge */}
+                        <div style={{
+                          width:32,height:32,borderRadius:8,flexShrink:0,
+                          background:`${cfg.color}15`,border:`1px solid ${cfg.color}28`,
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          marginTop:1,
+                        }}>
+                          <LucideIcon name={cfg.icon} size={14} color={cfg.color}/>
                         </div>
-                    </header>
-
-                    <main style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาของ..." style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 16px", color: "#fff", marginBottom: 18 }} />
-                        
-                        <div className="no-scrollbar" style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 24 }}>
-                            {["ทั้งหมด", ...CATEGORIES].map(cat => (
-                                <button key={cat} onClick={() => setFilterCat(cat)} style={{ background: filterCat === cat ? T.surface : "transparent", border: `1px solid ${filterCat === cat ? T.borderHi : T.border}`, borderRadius: 20, color: filterCat === cat ? "#fff" : T.muted, padding: "6px 16px", whiteSpace: "nowrap", fontSize: 12 }}>{cat}</button>
-                            ))}
+                        {/* Content */}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
+                            <span style={{
+                              fontSize:10,fontWeight:600,letterSpacing:"0.5px",
+                              color:cfg.color,border:`1px solid ${cfg.color}35`,
+                              borderRadius:4,padding:"1px 6px",fontFamily:"'DM Mono',monospace",
+                            }}>{cfg.label}</span>
+                            <span style={{fontSize:13,fontWeight:500,color:T.text}}>{h.name}</span>
+                            {h.newName&&h.newName!==h.name&&(
+                              <span style={{fontSize:12,color:T.muted}}>→ {h.newName}</span>
+                            )}
+                          </div>
+                          {(h.amount!=null)&&(
+                            <div style={{fontSize:12,color:T.muted,marginTop:3,fontFamily:"'DM Mono',monospace"}}>
+                              {h.action==="use"?"-":"+"}
+                              {h.amount} {h.unit}
+                              {h.action==="add"&&h.category&&<span style={{color:CAT_ACCENT[h.category]||T.dim,marginLeft:8,fontFamily:"'DM Sans',sans-serif",fontSize:11}}>{h.category}</span>}
+                            </div>
+                          )}
+                          {h.note&&h.action==="edit"&&(
+                            <div style={{fontSize:11,color:T.dim,marginTop:3}}>หมายเหตุ: {h.note}</div>
+                          )}
                         </div>
-
-                        {outOfStock.length > 0 && filterCat === "ทั้งหมด" && !search && (
-                            <div style={{ background: `${T.danger}15`, border: `1px solid ${T.danger}30`, borderRadius: 12, padding: "16px", marginBottom: 20, animation: "up 0.3s ease" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.danger }}>หมดแล้ว {outOfStock.length} รายการ</div>
-                                    <button onClick={() => {
-                                        const list = outOfStock.map(i => `• ${i.name}`).join('\n');
-                                        navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
-                                        showToast("คัดลอกรายการแล้ว! วางใน LINE ได้เลย");
-                                    }} style={{ fontSize: 11, background: T.danger, color: "#fff", padding: "5px 12px", borderRadius: 8, fontWeight: 600 }}>📋 สรุปรายการ</button>
-                                </div>
-                                <div style={{ fontSize: 11, color: `${T.danger}A0`, lineHeight: "1.6" }}>
-                                    {outOfStock.slice(0, 5).map(i => i.name).join(" · ")}
-                                    {outOfStock.length > 5 && ` ...และอีก ${outOfStock.length - 5} รายการ`}
-                                </div>
-                            </div>
-                        )}
-
-                        {loading ? <div style={{ textAlign: "center", color: T.dim, marginTop: 50 }}>กำลังซิงค์...</div> : (
-                            <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border}` }}>
-                                {filtered.map((item, idx) => {
-                                    const accent = CAT_ACCENT[item.category] || T.muted;
-                                    const empty = item.qty === 0;
-                                    return (
-                                        <div key={item.id} className="row" style={{ background: T.surface, borderTop: idx > 0 ? `1px solid ${T.border}` : "none", borderLeft: `3px solid ${empty ? T.danger : accent}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14 }}>
-                                            <div style={{ width: 38, height: 38, borderRadius: 10, background: `${empty ? T.danger : accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                <LucideIcon name={empty ? "x" : CAT_ICON[item.category]} color={empty ? T.danger : accent} size={18} />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontSize: 14, fontWeight: 500, color: empty ? T.muted : "#fff" }}>{item.name} {empty && <span style={{ fontSize: 9, color: T.danger, border: `1px solid ${T.danger}40`, padding: "1px 4px", borderRadius: 4, marginLeft: 6 }}>EMPTY</span>}</div>
-                                                <div style={{ fontSize: 12, color: empty ? T.danger : accent, fontFamily: "'DM Mono'", marginTop: 2 }}>{empty ? "0" : item.qty} {item.unit}</div>
-                                                {item.note && <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{item.note}</div>}
-                                            </div>
-                                            <div className="acts" style={{ display: "flex", gap: 6, opacity: 0.4 }}>
-                                                <button onClick={() => setTopUpModal(item)} style={{ background: `${T.success}15`, color: T.success, padding: "6px 12px", borderRadius: 8, fontWeight: "bold" }}>+</button>
-                                                {!empty && <button onClick={() => setUseModal(item)} style={{ background: T.elevated, color: T.text, padding: "6px 12px", borderRadius: 8, fontSize: 12 }}>ใช้</button>}
-                                                <button onClick={() => { setEditModal(item); setEditForm({ name: item.name, note: item.note || "", category: item.category }); }} style={{ padding: "8px" }}><LucideIcon name="pencil" size={14} color={T.muted} /></button>
-                                                <button onClick={() => handleDelete(item.id, item.name)} style={{ padding: "8px", color: T.dim }}>✕</button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </main>
-
-                    {showAdd && (
-                        <BottomSheet onClose={() => setShowAdd(false)}>
-                            <div style={{ fontWeight: 600, marginBottom: 20 }}>เพิ่มของใหม่</div>
-                            <input placeholder="ชื่อของ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, name: e.target.value })} />
-                            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-                                <input placeholder="จำนวน" type="number" style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, qty: e.target.value })} />
-                                
-                                <select value={form.unit} style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff" }} onChange={e => setForm({ ...form, unit: e.target.value })}>
-                                    {UNITS.map(u => <option key={u}>{u}</option>)}
-                                </select>
-                            </div>
-                            
-                            <select value={form.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setForm({ ...form, category: e.target.value })}>
-                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                            </select>
-                            
-                            <input placeholder="หมายเหตุ" style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 20 }} onChange={e => setForm({ ...form, note: e.target.value })} />
-                            <button onClick={handleAdd} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, fontWeight: 600, color: "#000" }}>บันทึกรายการ</button>
-                        </BottomSheet>
-                    )}
-                    {topUpModal && (
-                        <BottomSheet onClose={() => setTopUpModal(null)}>
-                            <div style={{ fontWeight: 600, marginBottom: 10 }}>เติมสต็อก: {topUpModal.name}</div>
-                            <input type="number" placeholder={`เติม (${topUpModal.unit})`} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 16, borderRadius: 10, color: "#fff", marginBottom: 15 }} onChange={e => setTopUpAmount(e.target.value)} />
-                            <button onClick={handleTopUp} style={{ width: "100%", background: T.success, padding: 16, borderRadius: 12, color: "#000", fontWeight: 600 }}>ยืนยันเติมของ</button>
-                        </BottomSheet>
-                    )}
-                    {useModal && (
-                        <BottomSheet onClose={() => setUseModal(null)}>
-                            <div style={{ fontWeight: 600, marginBottom: 10 }}>ใช้ของ: {useModal.name}</div>
-                            <input type="number" placeholder={`ใช้ไปเท่าไหร่? (${useModal.unit})`} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 16, borderRadius: 10, color: "#fff", marginBottom: 15 }} onChange={e => setUseAmount(e.target.value)} />
-                            <button onClick={handleUse} style={{ width: "100%", background: T.danger, padding: 16, borderRadius: 12, color: "#fff", fontWeight: 600 }}>ยืนยันบันทึก</button>
-                        </BottomSheet>
-                    )}
-                    {editModal && (
-                        <BottomSheet onClose={() => setEditModal(null)}>
-                            <div style={{ fontWeight: 600, marginBottom: 15 }}>แก้ไขข้อมูล: {editModal.name}</div>
-                            <input value={editForm.name} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-                            <select value={editForm.category} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", marginBottom: 12 }} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
-                                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                            </select>
-                            <textarea value={editForm.note} style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, padding: 14, borderRadius: 10, color: "#fff", height: 80, marginBottom: 15 }} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="หมายเหตุ" />
-                            <button onClick={handleEditSave} style={{ width: "100%", background: T.accent, padding: 16, borderRadius: 12, color: "#000", fontWeight: 600 }}>บันทึกการแก้ไข</button>
-                        </BottomSheet>
-                    )}
-                    {toast && <div style={{ position: "fixed", bottom: 25, left: "50%", transform: "translateX(-50%)", background: T.elevated, border: `1px solid ${T.borderHi}`, padding: "12px 24px", borderRadius: 30, fontSize: 13, zIndex: 300 }}>{toast.msg}</div>}
+                        {/* Time */}
+                        <div style={{fontSize:11,color:T.dim,whiteSpace:"nowrap",flexShrink:0,marginTop:2,fontFamily:"'DM Mono',monospace"}}>
+                          {new Date(h.at).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-            );
-        }
+              ))}
+            </div>
+          )}
+        </BottomSheet>
+      )}
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+      {/* ── Add Sheet ── */}
+      {showAdd&&(
+        <BottomSheet onClose={()=>setShowAdd(false)}>
+          <div style={{fontSize:15,fontWeight:600,marginBottom:20}}>เพิ่มของใหม่</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <input placeholder="ชื่อของ เช่น หมูสามชั้น ไข่ไก่" autoFocus
+              onChange={e=>setForm({...form,name:e.target.value})} style={inp}/>
+            <div style={{display:"flex",gap:10}}>
+              <input placeholder="จำนวน" type="number"
+                onChange={e=>setForm({...form,qty:e.target.value})} style={{...inp,flex:1}}/>
+              <select value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})} style={{...inp,flex:1}}>
+                {UNITS.map(u=><option key={u}>{u}</option>)}
+              </select>
+            </div>
+            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inp}>
+              {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+            </select>
+            <input placeholder="หมายเหตุ (ถ้ามี)"
+              onChange={e=>setForm({...form,note:e.target.value})} style={inp}/>
+            <button onClick={handleAdd} style={{background:T.accent,border:"none",borderRadius:10,color:"#000",padding:14,fontWeight:600,fontSize:14,cursor:"pointer",marginTop:6}}>
+              บันทึกรายการ
+            </button>
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ── Top-Up Sheet ── */}
+      {topUpModal&&(
+        <BottomSheet onClose={()=>setTopUpModal(null)}>
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"1.2px",textTransform:"uppercase",marginBottom:6}}>เติมสต็อก</div>
+            <div style={{fontSize:20,fontWeight:600}}>{topUpModal.name}</div>
+            <div style={{fontSize:12,color:T.muted,marginTop:4,fontFamily:"'DM Mono',monospace"}}>ปัจจุบัน {topUpModal.qty} {topUpModal.unit}</div>
+          </div>
+          <input type="number" placeholder={`เติมเพิ่ม (${topUpModal.unit})`} autoFocus
+            value={topUpAmount} onChange={e=>setTopUpAmount(e.target.value)} style={{...inp,marginBottom:topUpAmount?8:16}}/>
+          {topUpAmount&&<div style={{fontSize:12,color:T.success,marginBottom:14,fontFamily:"'DM Mono',monospace"}}>→ รวมทั้งหมด {topUpModal.qty+parseFloat(topUpAmount||0)} {topUpModal.unit}</div>}
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setTopUpModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
+            <button onClick={handleTopUp} disabled={!topUpAmount} style={{flex:2,background:topUpAmount?T.success:"rgba(126,200,160,0.15)",border:"none",borderRadius:10,color:topUpAmount?"#000":"#3A6A50",padding:13,fontWeight:600,cursor:topUpAmount?"pointer":"default"}}>เติม</button>
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ── Use Sheet ── */}
+      {useModal&&(
+        <BottomSheet onClose={()=>setUseModal(null)}>
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"1.2px",textTransform:"uppercase",marginBottom:6}}>นำออกใช้</div>
+            <div style={{fontSize:20,fontWeight:600}}>{useModal.name}</div>
+            <div style={{fontSize:12,color:T.muted,marginTop:4,fontFamily:"'DM Mono',monospace"}}>คงเหลือ {useModal.qty} {useModal.unit}</div>
+          </div>
+          <input type="number" placeholder={`ใช้ไปเท่าไหร่ (${useModal.unit})`} autoFocus
+            value={useAmount} onChange={e=>setUseAmount(e.target.value)} style={{...inp,marginBottom:16}}/>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setUseModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
+            <button onClick={handleUse} disabled={!useAmount} style={{flex:2,background:useAmount?T.danger:"rgba(212,114,106,0.15)",border:"none",borderRadius:10,color:useAmount?"#fff":"#6A3030",padding:13,fontWeight:600,cursor:useAmount?"pointer":"default"}}>ยืนยัน</button>
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ── Edit Sheet ── */}
+      {editModal&&(
+        <BottomSheet onClose={()=>setEditModal(null)}>
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"1.2px",textTransform:"uppercase",marginBottom:6}}>แก้ไขรายการ</div>
+            <div style={{fontSize:20,fontWeight:600}}>{editModal.name}</div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div>
+              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>ชื่อรายการ</div>
+              <input value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})} autoFocus style={inp}/>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมวดหมู่</div>
+              <select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={inp}>
+                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมายเหตุ</div>
+              <textarea value={editForm.note} onChange={e=>setEditForm({...editForm,note:e.target.value})}
+                placeholder="เช่น วันหมดอายุ วิธีเก็บ แหล่งที่มา..."
+                rows={3} style={{...inp,resize:"none",lineHeight:1.6}}/>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <button onClick={()=>setEditModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
+              <button onClick={handleEditSave} disabled={!editForm.name.trim()} style={{flex:2,background:editForm.name.trim()?T.accent:"rgba(200,169,110,0.2)",border:"none",borderRadius:10,color:editForm.name.trim()?"#000":"#6B5A30",padding:13,fontWeight:600,cursor:editForm.name.trim()?"pointer":"default"}}>บันทึก</button>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ── Toast ── */}
+      {toast&&(
+        <div style={{position:"fixed",bottom:25,left:"50%",transform:"translateX(-50%)",background:T.elevated,border:`1px solid ${T.borderHi}`,padding:"11px 22px",borderRadius:30,fontSize:13,zIndex:300,whiteSpace:"nowrap",boxShadow:"0 8px 40px rgba(0,0,0,0.6)",animation:"up 0.2s ease"}}>
+          {toast.msg}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
 </body>
 </html>
