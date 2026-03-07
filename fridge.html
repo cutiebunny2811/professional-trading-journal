@@ -78,13 +78,12 @@ function InpStyle(extra={}) {
   return {width:"100%",background:T.surface,border:`1px solid ${T.border}`,padding:"13px 14px",borderRadius:10,color:T.text,outline:"none",transition:"border-color 0.15s",...extra};
 }
 
-// 🛡️ เพิ่มตัวเช็คความถูกต้องของวันที่
 function groupByDate(history) {
   const groups = {};
   history.forEach(h => {
-    if (!h.at) return; // ข้ามถ้าไม่มีวันที่
+    if (!h.at) return; 
     const d = new Date(h.at);
-    if (isNaN(d.getTime())) return; // ข้ามถ้าวันที่พัง (แถวว่าง)
+    if (isNaN(d.getTime())) return; 
     
     const today = new Date();
     const yesterday = new Date(); yesterday.setDate(today.getDate()-1);
@@ -129,17 +128,30 @@ function App() {
       const r = await fetch(API_URL);
       const data = await r.json();
       
-      // 🛡️ กรองเฉพาะแถวที่มีชื่อของจริงๆ (ตัดแถวว่างใน Google Sheets ทิ้ง)
-      let cleanItems = [];
-      let cleanHistory = [];
-      
-      if (Array.isArray(data)) {
-        cleanItems = data.filter(i => i && i.name);
-      } else {
-        cleanItems = (data.items || []).filter(i => i && i.name);
-        cleanHistory = (data.history || []).filter(h => h && h.at && h.action);
-      }
-      
+      let rawItems = Array.isArray(data) ? data : (data.items || []);
+      let rawHistory = Array.isArray(data) ? [] : (data.history || []);
+
+      // 🛠️ วุ้นแปลภาษา: แปลงหัวข้อคอลัมน์จาก Sheet1 ให้ตรงกับแอป (แก้ปัญหาจอดำ)
+      let cleanItems = rawItems.map(i => ({
+        id: i.id || i.ID || genId(),
+        name: i.name || i.Name || "",
+        qty: parseFloat(i.qty !== undefined ? i.qty : (i.Quantity !== undefined ? i.Quantity : 0)) || 0,
+        unit: i.unit || i.Unit || "",
+        category: i.category || i.Category || "อื่นๆ",
+        note: i.note || i.Note || ""
+      })).filter(i => i.name.trim() !== "");
+
+      let cleanHistory = rawHistory.filter(h => h && (h.at || h.At)).map(h => ({
+        id: h.id || h.ID || genId(),
+        at: h.at || h.At || "",
+        action: h.action || h.Action || "edit",
+        name: h.name || h.Name || "",
+        amount: h.amount !== undefined ? h.amount : (h.Amount || null),
+        unit: h.unit || h.Unit || "",
+        category: h.category || h.Category || "",
+        note: h.note || h.Note || ""
+      }));
+
       setItems(cleanItems);
       setHistory(cleanHistory);
       setLastSync(new Date());
@@ -213,7 +225,6 @@ function App() {
 
   const outOfStock = items.filter(i=>i.qty===0);
   
-  // 🛡️ ใส่ String() ป้องกันแอปแครชถ้าชื่อสินค้าเป็นตัวเลข
   const filtered   = items
     .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&String(i.name||"").toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>(a.qty===0?1:0)-(b.qty===0?1:0));
@@ -369,7 +380,6 @@ function App() {
                   {entries.map((h,i)=>{
                     const cfg = ACTION_CONFIG[h.action]||ACTION_CONFIG.edit;
                     
-                    // 🛡️ ป้องกัน error เวลานำวันที่มาโชว์
                     const d = new Date(h.at);
                     const timeStr = !isNaN(d.getTime()) ? d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}) : "—";
 
