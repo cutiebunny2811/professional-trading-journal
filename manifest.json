@@ -1,10 +1,10 @@
 {
   "name": "ตู้เย็นครัว (Stock)",
   "short_name": "ตู้เย็นครัว",
-  "start_url": ".",
+  "start_url": "./fridge.html",
   "display": "standalone",
-  "background_color": "#0d0d1a",
-  "theme_color": "#1a1a2e",
+  "background_color": "#0C0C0E",
+  "theme_color": "#0C0C0E",
   "icons": [
     {
       "src": "https://emojicdn.elk.sh/❄️",
