@@ -7,8 +7,13 @@
     
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
     <link rel="icon" href="https://emojicdn.elk.sh/❄️">
-    <link rel="manifest" href="manifest_fridge.json">
+    
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0C0C0E">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -37,7 +42,8 @@ const { useState, useEffect, useCallback, useRef } = React;
 const API_URL = "https://script.google.com/macros/s/AKfycbwMeoad-YBa0dXmjY5OjKrYuKxaC4lcW8BaX2gsKRxTxZSHj0MO4RM5cd-FkAnmV4WfoA/exec";
 
 const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
-const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค"];
+// 🛠️ เพิ่มหน่วย กระป๋อง แกลลอน ถัง 
+const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค","กระป๋อง","แกลลอน","ถัง"];
 const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
 const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
 
@@ -111,7 +117,9 @@ function App() {
   const [topUpModal,   setTopUpModal]  = useState(null);
   const [topUpAmount,  setTopUpAmount] = useState("");
   const [editModal,    setEditModal]   = useState(null);
-  const [editForm,     setEditForm]    = useState({name:"",note:"",category:""});
+  
+  // 🛠️ เพิ่ม state unit ให้ฟอร์มแก้ไข
+  const [editForm,     setEditForm]    = useState({name:"",note:"",category:"",unit:""});
   const [form,         setForm]        = useState({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
   const [toast,        setToast]       = useState(null);
   const [lastSync,     setLastSync]    = useState(null);
@@ -131,7 +139,6 @@ function App() {
       let rawItems = Array.isArray(data) ? data : (data.items || []);
       let rawHistory = Array.isArray(data) ? [] : (data.history || []);
 
-      // 🛠️ วุ้นแปลภาษา: แปลงหัวข้อคอลัมน์จาก Sheet1 ให้ตรงกับแอป (แก้ปัญหาจอดำ)
       let cleanItems = rawItems.map(i => ({
         id: i.id || i.ID || genId(),
         name: i.name || i.Name || "",
@@ -210,10 +217,11 @@ function App() {
 
   const handleEditSave = () => {
     if (!editModal||!editForm.name.trim()) return;
-    const log = addLog("edit", editModal.name, { newName: editForm.name.trim(), note: editForm.note });
+    // 🛠️ อัปเดตการบันทึกให้เซฟหน่วยที่แก้ไขเข้าไปด้วย
+    const log = addLog("edit", editModal.name, { newName: editForm.name.trim(), note: editForm.note, unit: editForm.unit });
     setEditModal(null);
     showToast("แก้ไขแล้ว");
-    syncToSheet(items.map(i=>i.id===editModal.id?{...i,name:editForm.name.trim(),note:editForm.note,category:editForm.category}:i), [log,...history].slice(0,200));
+    syncToSheet(items.map(i=>i.id===editModal.id?{...i,name:editForm.name.trim(),note:editForm.note,category:editForm.category,unit:editForm.unit}:i), [log,...history].slice(0,200));
   };
 
   const handleDelete = (id, name) => {
@@ -338,7 +346,8 @@ function App() {
                   <div className="acts" style={{display:"flex",gap:6,opacity:0.35,transition:"opacity 0.18s",flexShrink:0}}>
                     <button onClick={()=>{setTopUpModal(item);setTopUpAmount("");}} style={{background:`${T.success}15`,border:`1px solid ${T.success}28`,color:T.success,padding:"5px 11px",borderRadius:7,fontWeight:700,fontSize:14,cursor:"pointer"}}>+</button>
                     {!empty&&<button onClick={()=>{setUseModal(item);setUseAmount("");}} style={{background:T.elevated,border:`1px solid ${T.border}`,color:T.muted,padding:"5px 11px",borderRadius:7,fontSize:12,cursor:"pointer"}}>ใช้</button>}
-                    <button onClick={()=>{setEditModal(item);setEditForm({name:item.name,note:item.note||"",category:item.category});}} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>
+                    {/* 🛠️ เซ็ตค่า unit ตอนกดแก้ไขด้วย */}
+                    <button onClick={()=>{setEditModal(item);setEditForm({name:item.name,note:item.note||"",category:item.category,unit:item.unit});}} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>
                       <LucideIcon name="pencil" size={13} color={T.muted}/>
                     </button>
                     <button onClick={()=>handleDelete(item.id,item.name)} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",color:T.dim,fontSize:13,cursor:"pointer",lineHeight:1}}>✕</button>
@@ -503,12 +512,23 @@ function App() {
               <div style={{fontSize:11,color:T.muted,marginBottom:6}}>ชื่อรายการ</div>
               <input value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})} autoFocus style={inp}/>
             </div>
-            <div>
-              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมวดหมู่</div>
-              <select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={inp}>
-                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-              </select>
+            
+            {/* 🛠️ เพิ่มช่องเลือกเปลี่ยนหน่วยในหน้าแก้ไข วางคู่กับหมวดหมู่ให้ดูสวยงาม */}
+            <div style={{display:"flex",gap:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมวดหมู่</div>
+                <select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={inp}>
+                  {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หน่วย</div>
+                <select value={editForm.unit} onChange={e=>setEditForm({...editForm,unit:e.target.value})} style={inp}>
+                  {UNITS.map(u=><option key={u}>{u}</option>)}
+                </select>
+              </div>
             </div>
+
             <div>
               <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมายเหตุ</div>
               <textarea value={editForm.note} onChange={e=>setEditForm({...editForm,note:e.target.value})}
