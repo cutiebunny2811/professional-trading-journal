@@ -109,6 +109,7 @@ function App() {
   const [loading,      setLoading]     = useState(true);
   const [showAdd,      setShowAdd]     = useState(false);
   const [showHistory, setShowHistory]  = useState(false);
+  const [showOutStock, setShowOutStock] = useState(false); // 🛠️ State สำหรับเปิด/ปิด pop-up ดูของหมด
   const [filterCat,    setFilterCat]   = useState("ทั้งหมด");
   const [search,       setSearch]      = useState("");
   const [useModal,     setUseModal]    = useState(null);
@@ -123,7 +124,6 @@ function App() {
 
   const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
 
-  // 🛠️ ล็อคโครงสร้างข้อมูลให้มีครบทุกคอลัมน์เสมอ (ห้าม Sheet ลบคอลัมน์)
   const addLog = (action, name, extra={}) => ({
     id: genId(),
     at: new Date().toISOString(),
@@ -154,7 +154,6 @@ function App() {
         note: i.note || i.Note || ""
       })).filter(i => i.name.trim() !== "");
 
-      // 🛠️ ปัดคำว่า null ทิ้ง และสร้างข้อมูลให้ครบทุกช่อง
       let cleanHistory = rawHistory.filter(h => h && (h.at || h.At)).map(h => {
         let amt = h.amount !== undefined ? h.amount : (h.Amount !== undefined ? h.Amount : "");
         if (String(amt).toLowerCase() === "null") amt = ""; 
@@ -184,7 +183,6 @@ function App() {
   const syncToSheet = async (nextItems, nextHistory) => {
     setItems(nextItems);
     
-    // 🛠️ ยืนยันโครงสร้างก่อนส่งไป Sheet อีกรอบ
     const standardizedHistory = (nextHistory || history).map(h => ({
       id: h.id || "",
       at: h.at || "",
@@ -320,17 +318,24 @@ function App() {
           ))}
         </div>
 
+        {/* 🛠️ ปรับปรุง UI กล่องแจ้งเตือนของหมด */}
         {outOfStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
           <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:13,fontWeight:600,color:T.danger}}>หมดแล้ว {outOfStock.length} รายการ</div>
-              <button onClick={()=>{
-                const list = outOfStock.map(i=>`• ${i.name}`).join("\n");
-                navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
-                showToast("คัดลอกรายการแล้ว วางใน LINE ได้เลย");
-              }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none"}}>
-                📋 สรุปรายการ
-              </button>
+              <div style={{display:"flex", gap:6}}>
+                {/* ปุ่มใหม่สำหรับเปิดหน้าต่างดูของที่หมดทั้งหมด */}
+                <button onClick={()=>setShowOutStock(true)} style={{fontSize:11,background:T.surface,color:T.text,padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:`1px solid ${T.borderHi}`}}>
+                  👀 ดูทั้งหมด
+                </button>
+                <button onClick={()=>{
+                  const list = outOfStock.map(i=>`• ${i.name}`).join("\n");
+                  navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
+                  showToast("คัดลอกรายการแล้ว วางใน LINE ได้เลย");
+                }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none"}}>
+                  📋 คัดลอก
+                </button>
+              </div>
             </div>
             <div style={{fontSize:11,color:`${T.danger}90`,lineHeight:1.7}}>
               {outOfStock.slice(0,5).map(i=>i.name).join(" · ")}
@@ -384,6 +389,39 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* 🛠️ เพิ่ม BottomSheet สำหรับดูรายการของที่หมด */}
+      {showOutStock&&(
+        <BottomSheet onClose={()=>setShowOutStock(false)} maxH="85vh">
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:600,color:T.danger}}>รายการที่หมดสต็อก</div>
+              <div style={{fontSize:12,color:T.muted,marginTop:4}}>ทั้งหมด {outOfStock.length} รายการ</div>
+            </div>
+            <button onClick={()=>setShowOutStock(false)} style={{background:"transparent",border:"none",color:T.muted,fontSize:20,cursor:"pointer"}}>✕</button>
+          </div>
+          
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {outOfStock.map(item => (
+              <div key={item.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.surface,padding:"14px 16px",borderRadius:12,border:`1px solid ${T.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:10,background:`${T.danger}15`,border:`1px solid ${T.danger}25`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <LucideIcon name={CAT_ICON[item.category]||"box"} size={16} color={T.danger}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:600,color:T.text}}>{item.name}</div>
+                    <div style={{fontSize:11,color:T.muted,marginTop:3}}>{item.category}</div>
+                  </div>
+                </div>
+                {/* 🛠️ ปุ่มสำหรับกดเติมของทันทีจากหน้านี้ */}
+                <button onClick={()=>{ setShowOutStock(false); setTopUpModal(item); setTopUpAmount(""); }} style={{background:`${T.success}15`,color:T.success,border:`1px solid ${T.success}28`,padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                  <LucideIcon name="plus" size={14}/> เติม
+                </button>
+              </div>
+            ))}
+          </div>
+        </BottomSheet>
+      )}
 
       {showHistory&&(
         <BottomSheet onClose={()=>setShowHistory(false)} maxH="88vh">
