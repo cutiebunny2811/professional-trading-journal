@@ -46,11 +46,12 @@ const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น",
 const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
 const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
 
+// 🛠️ เพิ่มสี warning สำหรับของใกล้หมด
 const T = {
   bg:"#0C0C0E", surface:"#131316", elevated:"#1C1C22",
   border:"rgba(255,255,255,0.07)", borderHi:"rgba(255,255,255,0.13)",
   text:"#E2E2EC", muted:"#64647A", dim:"#38384A",
-  accent:"#C8A96E", danger:"#D4726A", success:"#7EC8A0",
+  accent:"#C8A96E", danger:"#D4726A", success:"#7EC8A0", warning:"#D4A06A",
 };
 
 const ACTION_CONFIG = {
@@ -108,8 +109,9 @@ function App() {
   const [history,      setHistory]     = useState([]); 
   const [loading,      setLoading]     = useState(true);
   const [showAdd,      setShowAdd]     = useState(false);
-  const [showHistory, setShowHistory]  = useState(false);
-  const [showOutStock, setShowOutStock] = useState(false); // 🛠️ State สำหรับเปิด/ปิด pop-up ดูของหมด
+  const [showHistory,  setShowHistory] = useState(false);
+  const [showOutStock, setShowOutStock]= useState(false);
+  const [showLowStock, setShowLowStock]= useState(false); // 🛠️ State ใหม่สำหรับดูของใกล้หมด
   const [filterCat,    setFilterCat]   = useState("ทั้งหมด");
   const [search,       setSearch]      = useState("");
   const [useModal,     setUseModal]    = useState(null);
@@ -256,7 +258,9 @@ function App() {
     syncToSheet(items.filter(i=>i.id!==id), [log,...history].slice(0,200));
   };
 
-  const outOfStock = items.filter(i=>i.qty===0);
+  // 🛠️ แยกตัวแปร 2 กลุ่มชัดเจน: ของหมด (qty=0) และ ของใกล้หมด (qty < 1 แต่ยัง > 0)
+  const outOfStock = items.filter(i => i.qty === 0);
+  const lowStock   = items.filter(i => i.qty > 0 && i.qty < 1);
   
   const filtered   = items
     .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&String(i.name||"").toLowerCase().includes(search.toLowerCase()))
@@ -272,7 +276,9 @@ function App() {
           <div>
             <div style={{fontWeight:600,fontSize:16}}>❄︎&nbsp;&nbsp;ตู้เย็นครัว</div>
             <div style={{fontSize:11,color:T.muted,marginTop:3}}>
-              {items.length} รายการ{outOfStock.length>0&&<span style={{color:T.danger}}> · หมด {outOfStock.length}</span>} · {lastSync?.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})||"—"}
+              {items.length} รายการ
+              {outOfStock.length>0&&<span style={{color:T.danger}}> · หมด {outOfStock.length}</span>}
+              {lowStock.length>0&&<span style={{color:T.warning}}> · ใกล้หมด {lowStock.length}</span>}
             </div>
           </div>
           <div style={{display:"flex",gap:8}}>
@@ -318,28 +324,53 @@ function App() {
           ))}
         </div>
 
-        {/* 🛠️ ปรับปรุง UI กล่องแจ้งเตือนของหมด */}
+        {/* 🚨 กล่องแจ้งเตือนของหมด (สีแดง) */}
         {outOfStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
-          <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
+          <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:14,animation:"up 0.25s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:13,fontWeight:600,color:T.danger}}>หมดแล้ว {outOfStock.length} รายการ</div>
               <div style={{display:"flex", gap:6}}>
-                {/* ปุ่มใหม่สำหรับเปิดหน้าต่างดูของที่หมดทั้งหมด */}
-                <button onClick={()=>setShowOutStock(true)} style={{fontSize:11,background:T.surface,color:T.text,padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:`1px solid ${T.borderHi}`}}>
-                  👀 ดูทั้งหมด
+                {/* 🛠️ เปลี่ยนปุ่มเป็น Minimalist */}
+                <button onClick={()=>setShowOutStock(true)} style={{fontSize:11,background:T.surface,color:T.text,padding:"5px 10px",borderRadius:8,fontWeight:600,cursor:"pointer",border:`1px solid ${T.borderHi}`,display:"flex",alignItems:"center",gap:5}}>
+                  <LucideIcon name="list" size={12}/> ดูทั้งหมด
                 </button>
                 <button onClick={()=>{
                   const list = outOfStock.map(i=>`• ${i.name}`).join("\n");
                   navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
                   showToast("คัดลอกรายการแล้ว วางใน LINE ได้เลย");
-                }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none"}}>
-                  📋 คัดลอก
+                }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"5px 10px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none",display:"flex",alignItems:"center",gap:5}}>
+                  <LucideIcon name="copy" size={12}/> คัดลอก
                 </button>
               </div>
             </div>
             <div style={{fontSize:11,color:`${T.danger}90`,lineHeight:1.7}}>
               {outOfStock.slice(0,5).map(i=>i.name).join(" · ")}
               {outOfStock.length>5&&` ...และอีก ${outOfStock.length-5} รายการ`}
+            </div>
+          </div>
+        )}
+
+        {/* ⚠️ กล่องแจ้งเตือนของใกล้หมด (สีส้ม) */}
+        {lowStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
+          <div style={{background:`${T.warning}12`,border:`1px solid ${T.warning}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:13,fontWeight:600,color:T.warning}}>ใกล้หมดแล้ว {lowStock.length} รายการ</div>
+              <div style={{display:"flex", gap:6}}>
+                <button onClick={()=>setShowLowStock(true)} style={{fontSize:11,background:T.surface,color:T.text,padding:"5px 10px",borderRadius:8,fontWeight:600,cursor:"pointer",border:`1px solid ${T.borderHi}`,display:"flex",alignItems:"center",gap:5}}>
+                  <LucideIcon name="list" size={12}/> ดูทั้งหมด
+                </button>
+                <button onClick={()=>{
+                  const list = lowStock.map(i=>`• ${i.name} (เหลือ ${i.qty} ${i.unit})`).join("\n");
+                  navigator.clipboard.writeText(`⚠️ รายการของใกล้หมด:\n${list}`);
+                  showToast("คัดลอกรายการแล้ว วางใน LINE ได้เลย");
+                }} style={{fontSize:11,background:T.warning,color:"#000",padding:"5px 10px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none",display:"flex",alignItems:"center",gap:5}}>
+                  <LucideIcon name="copy" size={12}/> คัดลอก
+                </button>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:`${T.warning}90`,lineHeight:1.7}}>
+              {lowStock.slice(0,5).map(i=>i.name).join(" · ")}
+              {lowStock.length>5&&` ...และอีก ${lowStock.length-5} รายการ`}
             </div>
           </div>
         )}
@@ -390,7 +421,7 @@ function App() {
         )}
       </main>
 
-      {/* 🛠️ เพิ่ม BottomSheet สำหรับดูรายการของที่หมด */}
+      {/* 🚨 BottomSheet สำหรับดูรายการของที่หมด */}
       {showOutStock&&(
         <BottomSheet onClose={()=>setShowOutStock(false)} maxH="85vh">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
@@ -400,7 +431,6 @@ function App() {
             </div>
             <button onClick={()=>setShowOutStock(false)} style={{background:"transparent",border:"none",color:T.muted,fontSize:20,cursor:"pointer"}}>✕</button>
           </div>
-          
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {outOfStock.map(item => (
               <div key={item.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.surface,padding:"14px 16px",borderRadius:12,border:`1px solid ${T.border}`}}>
@@ -413,8 +443,38 @@ function App() {
                     <div style={{fontSize:11,color:T.muted,marginTop:3}}>{item.category}</div>
                   </div>
                 </div>
-                {/* 🛠️ ปุ่มสำหรับกดเติมของทันทีจากหน้านี้ */}
                 <button onClick={()=>{ setShowOutStock(false); setTopUpModal(item); setTopUpAmount(""); }} style={{background:`${T.success}15`,color:T.success,border:`1px solid ${T.success}28`,padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                  <LucideIcon name="plus" size={14}/> เติม
+                </button>
+              </div>
+            ))}
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ⚠️ BottomSheet สำหรับดูรายการใกล้หมด */}
+      {showLowStock&&(
+        <BottomSheet onClose={()=>setShowLowStock(false)} maxH="85vh">
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:600,color:T.warning}}>รายการใกล้หมดสต็อก</div>
+              <div style={{fontSize:12,color:T.muted,marginTop:4}}>ทั้งหมด {lowStock.length} รายการ</div>
+            </div>
+            <button onClick={()=>setShowLowStock(false)} style={{background:"transparent",border:"none",color:T.muted,fontSize:20,cursor:"pointer"}}>✕</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {lowStock.map(item => (
+              <div key={item.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.surface,padding:"14px 16px",borderRadius:12,border:`1px solid ${T.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:10,background:`${T.warning}15`,border:`1px solid ${T.warning}25`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <LucideIcon name={CAT_ICON[item.category]||"box"} size={16} color={T.warning}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:600,color:T.text}}>{item.name}</div>
+                    <div style={{fontSize:11,color:T.warning,marginTop:3}}>เหลือ {item.qty} {item.unit}</div>
+                  </div>
+                </div>
+                <button onClick={()=>{ setShowLowStock(false); setTopUpModal(item); setTopUpAmount(""); }} style={{background:`${T.success}15`,color:T.success,border:`1px solid ${T.success}28`,padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                   <LucideIcon name="plus" size={14}/> เติม
                 </button>
               </div>
