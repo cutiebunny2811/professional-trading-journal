@@ -41,12 +41,16 @@ const { useState, useEffect, useCallback, useRef } = React;
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwMeoad-YBa0dXmjY5OjKrYuKxaC4lcW8BaX2gsKRxTxZSHj0MO4RM5cd-FkAnmV4WfoA/exec";
 
-const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
+// 🛠️ เพิ่ม "ผลไม้" และ "ซอส" เข้าไปในหมวดหมู่
+const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","ผลไม้","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","ซอส","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
 const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค","กระป๋อง","แกลลอน","ถัง"];
-const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
-const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
 
-// 🛠️ เพิ่มสี warning สำหรับของใกล้หมด
+// 🛠️ เพิ่มสีให้ ผลไม้ (แดงอมชมพู) และ ซอส (แดงเข้ม)
+const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","ผลไม้":"#E27A7A","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","ซอส":"#C86E6E","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
+
+// 🛠️ เพิ่มไอคอน apple (ผลไม้) และ droplet (ซอส) สไตล์ Minimal
+const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","ผลไม้":"apple","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","ซอส":"droplet","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
+
 const T = {
   bg:"#0C0C0E", surface:"#131316", elevated:"#1C1C22",
   border:"rgba(255,255,255,0.07)", borderHi:"rgba(255,255,255,0.13)",
@@ -111,7 +115,7 @@ function App() {
   const [showAdd,      setShowAdd]     = useState(false);
   const [showHistory,  setShowHistory] = useState(false);
   const [showOutStock, setShowOutStock]= useState(false);
-  const [showLowStock, setShowLowStock]= useState(false); // 🛠️ State ใหม่สำหรับดูของใกล้หมด
+  const [showLowStock, setShowLowStock]= useState(false);
   const [filterCat,    setFilterCat]   = useState("ทั้งหมด");
   const [search,       setSearch]      = useState("");
   const [useModal,     setUseModal]    = useState(null);
@@ -258,7 +262,6 @@ function App() {
     syncToSheet(items.filter(i=>i.id!==id), [log,...history].slice(0,200));
   };
 
-  // 🛠️ แยกตัวแปร 2 กลุ่มชัดเจน: ของหมด (qty=0) และ ของใกล้หมด (qty < 1 แต่ยัง > 0)
   const outOfStock = items.filter(i => i.qty === 0);
   const lowStock   = items.filter(i => i.qty > 0 && i.qty < 1);
   
@@ -324,13 +327,11 @@ function App() {
           ))}
         </div>
 
-        {/* 🚨 กล่องแจ้งเตือนของหมด (สีแดง) */}
         {outOfStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
           <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:14,animation:"up 0.25s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:13,fontWeight:600,color:T.danger}}>หมดแล้ว {outOfStock.length} รายการ</div>
               <div style={{display:"flex", gap:6}}>
-                {/* 🛠️ เปลี่ยนปุ่มเป็น Minimalist */}
                 <button onClick={()=>setShowOutStock(true)} style={{fontSize:11,background:T.surface,color:T.text,padding:"5px 10px",borderRadius:8,fontWeight:600,cursor:"pointer",border:`1px solid ${T.borderHi}`,display:"flex",alignItems:"center",gap:5}}>
                   <LucideIcon name="list" size={12}/> ดูทั้งหมด
                 </button>
@@ -350,7 +351,6 @@ function App() {
           </div>
         )}
 
-        {/* ⚠️ กล่องแจ้งเตือนของใกล้หมด (สีส้ม) */}
         {lowStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
           <div style={{background:`${T.warning}12`,border:`1px solid ${T.warning}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -421,7 +421,6 @@ function App() {
         )}
       </main>
 
-      {/* 🚨 BottomSheet สำหรับดูรายการของที่หมด */}
       {showOutStock&&(
         <BottomSheet onClose={()=>setShowOutStock(false)} maxH="85vh">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
@@ -452,7 +451,6 @@ function App() {
         </BottomSheet>
       )}
 
-      {/* ⚠️ BottomSheet สำหรับดูรายการใกล้หมด */}
       {showLowStock&&(
         <BottomSheet onClose={()=>setShowLowStock(false)} maxH="85vh">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
