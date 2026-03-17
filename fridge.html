@@ -38,9 +38,9 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+// 🚀 จุดที่ 1: เพิ่ม useDeferredValue และ useMemo
+const { useState, useEffect, useCallback, useRef, useDeferredValue, useMemo } = React;
 
-// 🚀 เชื่อมต่อ Supabase ของโปรเจกต์เชฟโดยตรง
 const supabaseUrl = 'https://zzynqlqnzdhkffvqvpzt.supabase.co';
 const supabaseKey = 'sb_publishable_x5Li82tQRPoiKP55IrNlvA_mNypDvDz';
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -118,6 +118,10 @@ function App() {
   const [showLowStock, setShowLowStock]= useState(false);
   const [filterCat,    setFilterCat]   = useState("ทั้งหมด");
   const [search,       setSearch]      = useState("");
+  
+  // 🚀 จุดที่ 2: เพิ่ม deferredSearch
+  const deferredSearch = useDeferredValue(search);
+
   const [useModal,     setUseModal]    = useState(null);
   const [useAmount,    setUseAmount]   = useState("");
   const [topUpModal,   setTopUpModal]  = useState(null);
@@ -142,7 +146,6 @@ function App() {
     note: extra.note || ""
   });
 
-  // 🚀 โหลดข้อมูลจาก Supabase
   const loadItems = useCallback(async (showLoading=false) => {
     if (showLoading) setLoading(true);
     try {
@@ -162,24 +165,21 @@ function App() {
 
   useEffect(() => {
     loadItems(true);
-    const t = setInterval(()=>loadItems(false), 5000); // อัปเดตทุก 5 วิ เพราะ Supabase เบามาก
+    const t = setInterval(()=>loadItems(false), 5000); 
     return ()=>clearInterval(t);
   }, [loadItems]);
 
-  // 🚀 ฟังก์ชันบันทึกลง Supabase แบบ Optimistic (แสดงผลก่อน ค่อยเซฟหลังบ้าน)
   const handleAdd = async () => {
     if (!form.name.trim()||!form.qty) return;
     const it = { id:genId(), name:form.name.trim(), qty:parseFloat(form.qty), unit:form.unit, category:form.category, note:form.note };
     const log = addLog("add", it.name, { amount:it.qty, unit:it.unit, category:it.category });
     
-    // อัปเดตหน้าจอทันที
     setItems(prev => [it, ...prev]);
     setHistory(prev => [log, ...prev].slice(0,200));
     setShowAdd(false);
     setForm({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
     showToast(`เพิ่ม ${it.name} แล้ว`);
     
-    // ยิงเข้า DB
     await supabase.from('fridge_items').insert([it]);
     await supabase.from('fridge_history').insert([log]);
   };
@@ -242,7 +242,6 @@ function App() {
   const clearHistory = async () => {
     if(!confirm("ล้างประวัติทั้งหมด?")) return;
     setHistory([]);
-    // ลบข้อมูลทั้งหมดในตารางประวัติ
     const { data } = await supabase.from('fridge_history').select('id');
     if (data && data.length > 0) {
         const ids = data.map(d => d.id);
@@ -253,9 +252,12 @@ function App() {
   const outOfStock = items.filter(i => i.qty === 0);
   const lowStock   = items.filter(i => i.qty > 0 && i.qty < 1);
   
-  const filtered   = items
-    .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&String(i.name||"").toLowerCase().includes(search.toLowerCase()))
-    .sort((a,b)=>(a.qty===0?1:0)-(b.qty===0?1:0));
+  // 🚀 จุดที่ 3: ใช้ useMemo และ deferredSearch กรองข้อมูล
+  const filtered = useMemo(() => {
+    return items
+      .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&String(i.name||"").toLowerCase().includes(deferredSearch.toLowerCase()))
+      .sort((a,b)=>(a.qty===0?1:0)-(b.qty===0?1:0));
+  }, [items, filterCat, deferredSearch]);
 
   const histGroups = groupByDate([...history]);
   const inp = InpStyle();
