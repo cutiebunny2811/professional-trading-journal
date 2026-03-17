@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>สต๊อกตู้เย็น</title>
+    <title>สต๊อกตู้เย็น - Powered by Supabase</title>
     
     <link rel="apple-touch-icon" href="https://emojicdn.elk.sh/❄️">
     <link rel="icon" href="https://emojicdn.elk.sh/❄️">
@@ -15,6 +15,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -39,16 +40,15 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwMeoad-YBa0dXmjY5OjKrYuKxaC4lcW8BaX2gsKRxTxZSHj0MO4RM5cd-FkAnmV4WfoA/exec";
+// 🚀 เชื่อมต่อ Supabase ของโปรเจกต์เชฟโดยตรง
+const supabaseUrl = 'https://zzynqlqnzdhkffvqvpzt.supabase.co';
+const supabaseKey = 'sb_publishable_x5Li82tQRPoiKP55IrNlvA_mNypDvDz';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// 🛠️ เพิ่ม "ผลไม้" และ "ซอส" เข้าไปในหมวดหมู่
 const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","ผลไม้","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","ซอส","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
 const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค","กระป๋อง","แกลลอน","ถัง"];
 
-// 🛠️ เพิ่มสีให้ ผลไม้ (แดงอมชมพู) และ ซอส (แดงเข้ม)
 const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","ผลไม้":"#E27A7A","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","ซอส":"#C86E6E","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
-
-// 🛠️ เพิ่มไอคอน apple (ผลไม้) และ droplet (ซอส) สไตล์ Minimal
 const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","ผลไม้":"apple","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","ซอส":"droplet","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
 
 const T = {
@@ -136,49 +136,23 @@ function App() {
     action: action,
     name: name,
     newName: extra.newName || "",
-    amount: extra.amount !== undefined ? extra.amount : "",
+    amount: extra.amount !== undefined ? String(extra.amount) : "",
     unit: extra.unit || "",
     category: extra.category || "",
     note: extra.note || ""
   });
 
+  // 🚀 โหลดข้อมูลจาก Supabase
   const loadItems = useCallback(async (showLoading=false) => {
     if (showLoading) setLoading(true);
     try {
-      const r = await fetch(API_URL);
-      const data = await r.json();
+      const [itemsRes, histRes] = await Promise.all([
+        supabase.from('fridge_items').select('*').order('name'),
+        supabase.from('fridge_history').select('*').order('at', { ascending: false }).limit(200)
+      ]);
       
-      let rawItems = Array.isArray(data) ? data : (data.items || []);
-      let rawHistory = Array.isArray(data) ? [] : (data.history || []);
-
-      let cleanItems = rawItems.map(i => ({
-        id: i.id || i.ID || genId(),
-        name: i.name || i.Name || "",
-        qty: parseFloat(i.qty !== undefined ? i.qty : (i.Quantity !== undefined ? i.Quantity : 0)) || 0,
-        unit: i.unit || i.Unit || "",
-        category: i.category || i.Category || "อื่นๆ",
-        note: i.note || i.Note || ""
-      })).filter(i => i.name.trim() !== "");
-
-      let cleanHistory = rawHistory.filter(h => h && (h.at || h.At)).map(h => {
-        let amt = h.amount !== undefined ? h.amount : (h.Amount !== undefined ? h.Amount : "");
-        if (String(amt).toLowerCase() === "null") amt = ""; 
-
-        return {
-          id: h.id || h.ID || genId(),
-          at: h.at || h.At || "",
-          action: h.action || h.Action || "edit",
-          name: h.name || h.Name || "",
-          newName: h.newName || h.NewName || "", 
-          amount: amt,
-          unit: h.unit || h.Unit || "",
-          category: h.category || h.Category || "",
-          note: h.note || h.Note || ""
-        };
-      });
-
-      setItems(cleanItems);
-      setHistory(cleanHistory);
+      if (itemsRes.data) setItems(itemsRes.data);
+      if (histRes.data) setHistory(histRes.data);
       setLastSync(new Date());
     } catch(err) { 
       console.error("Fetch Error:", err); 
@@ -186,80 +160,94 @@ function App() {
     setLoading(false);
   }, []);
 
-  const syncToSheet = async (nextItems, nextHistory) => {
-    setItems(nextItems);
-    
-    const standardizedHistory = (nextHistory || history).map(h => ({
-      id: h.id || "",
-      at: h.at || "",
-      action: h.action || "",
-      name: h.name || "",
-      newName: h.newName || "",
-      amount: h.amount !== undefined && h.amount !== null && h.amount !== "null" ? h.amount : "",
-      unit: h.unit || "",
-      category: h.category || "",
-      note: h.note || ""
-    }));
-
-    setHistory(standardizedHistory);
-
-    try {
-      await fetch(API_URL, {
-        method:"POST",
-        body: JSON.stringify({ action:"saveAll", items: nextItems, history: standardizedHistory }),
-      });
-      setLastSync(new Date());
-    } catch { showToast("บันทึกไม่สำเร็จ","err"); }
-  };
-
   useEffect(() => {
     loadItems(true);
-    const t = setInterval(()=>loadItems(false), 15000);
+    const t = setInterval(()=>loadItems(false), 5000); // อัปเดตทุก 5 วิ เพราะ Supabase เบามาก
     return ()=>clearInterval(t);
   }, [loadItems]);
 
-  const handleAdd = () => {
+  // 🚀 ฟังก์ชันบันทึกลง Supabase แบบ Optimistic (แสดงผลก่อน ค่อยเซฟหลังบ้าน)
+  const handleAdd = async () => {
     if (!form.name.trim()||!form.qty) return;
     const it = { id:genId(), name:form.name.trim(), qty:parseFloat(form.qty), unit:form.unit, category:form.category, note:form.note };
     const log = addLog("add", it.name, { amount:it.qty, unit:it.unit, category:it.category });
+    
+    // อัปเดตหน้าจอทันที
+    setItems(prev => [it, ...prev]);
+    setHistory(prev => [log, ...prev].slice(0,200));
     setShowAdd(false);
     setForm({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
     showToast(`เพิ่ม ${it.name} แล้ว`);
-    syncToSheet([it,...items], [log,...history].slice(0,200));
+    
+    // ยิงเข้า DB
+    await supabase.from('fridge_items').insert([it]);
+    await supabase.from('fridge_history').insert([log]);
   };
 
-  const handleUse = () => {
+  const handleUse = async () => {
     if (!useModal||!useAmount) return;
     const amt = parseFloat(useAmount);
     const nq  = Math.max(0, useModal.qty - amt);
     const log = addLog("use", useModal.name, { amount:amt, unit:useModal.unit });
+    
+    setItems(prev => prev.map(i=>i.id===useModal.id?{...i,qty:nq}:i));
+    setHistory(prev => [log, ...prev].slice(0,200));
     setUseModal(null); setUseAmount("");
     showToast(nq===0 ? `${useModal.name} หมดแล้ว` : `ใช้ไป ${amt} ${useModal.unit}`, nq===0?"warn":"ok");
-    syncToSheet(items.map(i=>i.id===useModal.id?{...i,qty:nq}:i), [log,...history].slice(0,200));
+    
+    await supabase.from('fridge_items').update({ qty: nq }).eq('id', useModal.id);
+    await supabase.from('fridge_history').insert([log]);
   };
 
-  const handleTopUp = () => {
+  const handleTopUp = async () => {
     if (!topUpModal||!topUpAmount) return;
     const amt = parseFloat(topUpAmount);
+    const nq = topUpModal.qty + amt;
     const log = addLog("topup", topUpModal.name, { amount:amt, unit:topUpModal.unit });
+    
+    setItems(prev => prev.map(i=>i.id===topUpModal.id?{...i,qty:nq}:i));
+    setHistory(prev => [log, ...prev].slice(0,200));
     setTopUpModal(null); setTopUpAmount("");
     showToast(`เติม +${amt} ${topUpModal.unit}`);
-    syncToSheet(items.map(i=>i.id===topUpModal.id?{...i,qty:i.qty+amt}:i), [log,...history].slice(0,200));
+    
+    await supabase.from('fridge_items').update({ qty: nq }).eq('id', topUpModal.id);
+    await supabase.from('fridge_history').insert([log]);
   };
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editModal||!editForm.name.trim()) return;
     const log = addLog("edit", editModal.name, { newName: editForm.name.trim(), note: editForm.note, unit: editForm.unit, amount: "" });
+    
+    setItems(prev => prev.map(i=>i.id===editModal.id?{...i,name:editForm.name.trim(),note:editForm.note,category:editForm.category,unit:editForm.unit}:i));
+    setHistory(prev => [log, ...prev].slice(0,200));
     setEditModal(null);
     showToast("แก้ไขแล้ว");
-    syncToSheet(items.map(i=>i.id===editModal.id?{...i,name:editForm.name.trim(),note:editForm.note,category:editForm.category,unit:editForm.unit}:i), [log,...history].slice(0,200));
+    
+    await supabase.from('fridge_items').update({ name: editForm.name.trim(), note: editForm.note, category: editForm.category, unit: editForm.unit }).eq('id', editModal.id);
+    await supabase.from('fridge_history').insert([log]);
   };
 
-  const handleDelete = (id, name) => {
+  const handleDelete = async (id, name) => {
     if (!confirm(`ลบ "${name}" ออกจากรายการ?`)) return;
     const log = addLog("delete", name);
+    
+    setItems(prev => prev.filter(i=>i.id!==id));
+    setHistory(prev => [log, ...prev].slice(0,200));
     showToast(`ลบ ${name} ออกแล้ว`,"dim");
-    syncToSheet(items.filter(i=>i.id!==id), [log,...history].slice(0,200));
+    
+    await supabase.from('fridge_items').delete().eq('id', id);
+    await supabase.from('fridge_history').insert([log]);
+  };
+
+  const clearHistory = async () => {
+    if(!confirm("ล้างประวัติทั้งหมด?")) return;
+    setHistory([]);
+    // ลบข้อมูลทั้งหมดในตารางประวัติ
+    const { data } = await supabase.from('fridge_history').select('id');
+    if (data && data.length > 0) {
+        const ids = data.map(d => d.id);
+        await supabase.from('fridge_history').delete().in('id', ids);
+    }
   };
 
   const outOfStock = items.filter(i => i.qty === 0);
@@ -277,7 +265,10 @@ function App() {
       <header style={{position:"sticky",top:0,zIndex:100,background:`${T.bg}E8`,backdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,padding:"16px 20px"}}>
         <div style={{maxWidth:560,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontWeight:600,fontSize:16}}>❄︎&nbsp;&nbsp;ตู้เย็นครัว</div>
+            <div style={{fontWeight:600,fontSize:16, display: 'flex', alignItems: 'center', gap: '6px'}}>
+              ❄︎ ตู้เย็นครัว
+              <span style={{fontSize: 9, background: '#22c55e20', color: '#22c55e', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold'}}>PRO</span>
+            </div>
             <div style={{fontSize:11,color:T.muted,marginTop:3}}>
               {items.length} รายการ
               {outOfStock.length>0&&<span style={{color:T.danger}}> · หมด {outOfStock.length}</span>}
@@ -489,7 +480,7 @@ function App() {
               <div style={{fontSize:11,color:T.muted,marginTop:3}}>{history.length} รายการล่าสุด</div>
             </div>
             {history.length>0&&(
-              <button onClick={()=>{if(confirm("ล้างประวัติทั้งหมด?"))syncToSheet(items,[]);}} style={{
+              <button onClick={clearHistory} style={{
                 fontSize:11,color:T.muted,background:"transparent",border:`1px solid ${T.border}`,
                 borderRadius:8,padding:"5px 12px",cursor:"pointer",
               }}>ล้างประวัติ</button>
