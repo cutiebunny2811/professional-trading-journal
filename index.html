@@ -446,7 +446,7 @@ function renderEquityCurve(filtered) {
   for (var j=1; j<pts.length; j++) ctx.lineTo(toX(j), toY(pts[j]));
   ctx.strokeStyle = hex; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
   ctx.beginPath(); ctx.arc(toX(pts.length-1), toY(last), 3.5, 0, Math.PI*2);
-  ctx.fillStyle = hex; fill();
+  ctx.fillStyle = hex; ctx.fill();
   ctx.fillStyle = 'rgba(90,90,110,0.8)'; ctx.font = '500 9px JetBrains Mono,monospace';
   ctx.textAlign = 'left'; ctx.fillText(fmtShort(minV), 4, H-5);
   ctx.textAlign = 'right'; ctx.fillText(fmtShort(maxV), W-4, 16);
@@ -514,7 +514,7 @@ function renderList(list) {
         '<span class="mono" style="font-size:13px;font-weight:700;color:' + color + ';">' + (w ? '+' : '') + fmt(t.amount) + '</span>' +
         '<button class="del-btn" data-id="' + t.id + '">' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>' +
-        '</button>' +
+        </button>
       '</div>';
     el.appendChild(row);
   });
