@@ -28,6 +28,7 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:1px;backgroun
 .mono{font-family:'JetBrains Mono',monospace;}
 .card{background:var(--bg1);border:1px solid var(--border);border-radius:14px;transition:border-color 0.2s;}
 .stat-card{background:var(--bg1);border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;transition:border-color 0.2s,background 0.2s;}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);}
 .stat-card-gold{background:linear-gradient(135deg,#0e0c08,#100e09);border-color:var(--border2);}
 .stat-card-gold::after{background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0.3;}
 .stat-card-gold .stat-val{color:var(--gold2);}
@@ -75,19 +76,7 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:1px;backgroun
 .del-btn{opacity:1;transition:all 0.15s;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);border-radius:7px;cursor:pointer;color:var(--red);padding:8px;min-width:34px;min-height:34px;display:flex;align-items:center;justify-content:center;}
 .del-btn:hover{background:rgba(248,113,113,0.25);}
 .del-btn:active{background:rgba(248,113,113,0.4);}
-
-/* ─── FIXES FOR IOS / PASS BUTTON EVENTS ─── */
-.del-btn svg { pointer-events: none; }
-input[type="date"].field-input {
-  display: block;
-  -webkit-appearance: none;
-  appearance: none;
-  min-height: 41px;
-}
-input[type="date"].field-input::-webkit-date-and-time-value {
-  text-align: left;
-  min-height: 1em;
-}
+.del-btn svg { pointer-events: none; } /* ป้องกันไอคอนถังขยะบังการจิ้มปุ่มลบใน iOS และเว็บเบราว์เซอร์ */
 
 #equity-canvas{width:100%;height:110px;display:block;}
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:13px;font-weight:600;padding:10px 20px;border-radius:10px;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:'Outfit',sans-serif;}
@@ -343,8 +332,21 @@ input[type="date"].field-input::-webkit-date-and-time-value {
 </div>
 
 <script>
-var trades   = JSON.parse(localStorage.getItem('ptj_trades'))   || [];
-var balances = JSON.parse(localStorage.getItem('ptj_balances')) || {'Day Trade':0,'Swing Trade':0,'Options':0};
+// ป้องกันข้อมูลชำรุดด้วย Try/Catch ป้องกันเว็บค้างเป็น $0.00
+var trades = [];
+try {
+  trades = JSON.parse(localStorage.getItem('ptj_trades')) || [];
+} catch(e) {
+  trades = [];
+}
+
+var balances = {'Day Trade':0,'Swing Trade':0,'Options':0};
+try {
+  balances = JSON.parse(localStorage.getItem('ptj_balances')) || {'Day Trade':0,'Swing Trade':0,'Options':0};
+} catch(e) {
+  balances = {'Day Trade':0,'Swing Trade':0,'Options':0};
+}
+
 var curTab = 'All';
 var curDate = new Date();
 var curOutcome = 'Win';
@@ -376,9 +378,11 @@ function renderAll() {
   var filtered = curTab === 'All' ? trades : trades.filter(function(t){ return t.strategy === curTab; });
   var net=0, wins=0, grossWin=0, grossLoss=0, winSum=0, lossSum=0;
   filtered.forEach(function(t) {
-    net += t.amount;
-    if (t.amount > 0) { wins++; grossWin += t.amount; winSum += t.amount; }
-    else { grossLoss += Math.abs(t.amount); lossSum += t.amount; }
+    if (t && typeof t.amount === 'number') {
+      net += t.amount;
+      if (t.amount > 0) { wins++; grossWin += t.amount; winSum += t.amount; }
+      else { grossLoss += Math.abs(t.amount); lossSum += t.amount; }
+    }
   });
   var losses = filtered.length - wins;
   var cap = curTab === 'All'
@@ -420,7 +424,7 @@ function renderEquityCurve(filtered) {
   sid('equity-count', filtered.length + (filtered.length !== 1 ? ' trades' : ' trade'));
   var sorted = filtered.slice().sort(function(a,b){ return new Date(a.date) - new Date(b.date); });
   var pts = [0];
-  sorted.forEach(function(t){ pts.push(pts[pts.length-1] + t.amount); });
+  sorted.forEach(function(t){ if(t && typeof t.amount==='number') pts.push(pts[pts.length-1] + t.amount); });
   var W = canvas.offsetWidth || 600, H = 110, dpr = window.devicePixelRatio || 1;
   canvas.width = W * dpr; canvas.height = H * dpr;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -446,7 +450,7 @@ function renderEquityCurve(filtered) {
   for (var j=1; j<pts.length; j++) ctx.lineTo(toX(j), toY(pts[j]));
   ctx.strokeStyle = hex; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
   ctx.beginPath(); ctx.arc(toX(pts.length-1), toY(last), 3.5, 0, Math.PI*2);
-  ctx.fillStyle = hex; ctx.fill(); /* <--- FIX: เติม ctx. เรียบร้อยแล้วครับ! */
+  ctx.fillStyle = hex; ctx.fill();
   ctx.fillStyle = 'rgba(90,90,110,0.8)'; ctx.font = '500 9px JetBrains Mono,monospace';
   ctx.textAlign = 'left'; ctx.fillText(fmtShort(minV), 4, H-5);
   ctx.textAlign = 'right'; ctx.fillText(fmtShort(maxV), W-4, 16);
@@ -464,7 +468,7 @@ function renderCalendar() {
   }
   for (var d=1; d<=dim; d++) {
     var ds = y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    var dt = trades.filter(function(t){ return t.date === ds; });
+    var dt = trades.filter(function(t){ return t && t.date === ds; });
     if (curTab !== 'All') dt = dt.filter(function(t){ return t.strategy === curTab; });
     var pl = dt.reduce(function(a,t){ return a + t.amount; }, 0);
     var el = document.createElement('div');
@@ -489,6 +493,7 @@ function renderList(list) {
   }
   var sorted = list.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }).slice(0, 50);
   sorted.forEach(function(t) {
+    if (!t) return;
     var w = t.amount >= 0;
     var color = w ? 'var(--green)' : 'var(--red)';
     var row = document.createElement('div');
@@ -512,7 +517,7 @@ function renderList(list) {
       '</div>' +
       '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
         '<span class="mono" style="font-size:13px;font-weight:700;color:' + color + ';">' + (w ? '+' : '') + fmt(t.amount) + '</span>' +
-        '<button class="del-btn" data-id="' + t.id + '">' +
+        '<button class="del-btn" onclick="delTrade(\'' + t.id + '\')">' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>' +
         </button>
       '</div>';
@@ -522,9 +527,10 @@ function renderList(list) {
 
 function renderMonthly() {
   var el = gel('monthly-list'); if (!el) return;
-  var filtered = curTab === 'All' ? trades : trades.filter(function(t){ return t.strategy === curTab; });
+  var filtered = curTab === 'All' ? trades : trades.filter(function(t){ return t && t.strategy === curTab; });
   var byMonth = {};
   filtered.forEach(function(t) {
+    if (!t) return;
     var key = t.date.substring(0, 7);
     if (!byMonth[key]) byMonth[key] = {pl:0, wins:0, total:0};
     byMonth[key].pl += t.amount; byMonth[key].total++;
@@ -597,15 +603,18 @@ function saveTrade() {
   var amt = parseFloat(gel('t-amount').value);
   if (!date || isNaN(amt) || amt === 0) { alert('Please fill in Date and Amount'); return; }
   if (curOutcome === 'Loss') amt = -Math.abs(amt); else amt = Math.abs(amt);
-  trades.push({id: Date.now(), date: date, ticker: ticker, strategy: strat, amount: amt, notes: notes});
+  trades.push({id: Date.now().toString(), date: date, ticker: ticker, strategy: strat, amount: amt, notes: notes});
   save(); renderAll(); closeModal('modal-trade');
 }
+
+// ฟังก์ชันลบแบบสมบูรณ์ บังคับให้เป็น String ป้องกัน Type Mismatch
 function delTrade(id) {
   if (confirm('Delete this trade?')) {
-    trades = trades.filter(function(t){ return String(t.id) !== String(id); });
+    trades = trades.filter(function(t){ return t && String(t.id) !== String(id); });
     save(); renderAll();
   }
 }
+
 function openFundModal() {
   openModal('modal-funds'); setFundType('Deposit');
   gel('f-amount').value = ''; renderFundBalances();
@@ -679,15 +688,6 @@ function resetData() {
     localStorage.removeItem('ptj_trades'); localStorage.removeItem('ptj_balances'); location.reload();
   }
 }
-
-// ─── EVENT DELEGATION FOR DELETE BUTTONS (FIX FOR MOBILE) ───
-gel('tx-list').addEventListener('click', function(e) {
-  var delBtn = e.target.closest('.del-btn');
-  if (delBtn) {
-    e.stopPropagation();
-    delTrade(delBtn.dataset.id);
-  }
-});
 </script>
 </body>
 </html>
