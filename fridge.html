@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0C0C0E">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-   <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
@@ -26,92 +26,130 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+const { useState, useEffect, useCallback } = React;
 
 const API_URL = "https://script.google.com/macros/s/AKfycby0HHsN8RL1eZBvBiLNYAUt_aGvTNRC1pwKRu0BoUPltT5lyRpFt2KkstDFEqcP0ug2Cw/exec";
 
 const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
 const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค"];
 const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
-const CAT_ICON = {"เนื้อสัตว์":"beef","ซีฟู้ด":"fish","ผัก":"leaf","นม/ไข่":"milk","เครื่องดื่ม":"glass-water","เครื่องปรุง":"flame-kindling","อาหารสำเร็จ":"utensils-crossed","เบเกอรี่":"croissant","อื่นๆ":"box"};
 
 const T = {
   bg:"#0C0C0E", surface:"#131316", elevated:"#1C1C22",
   border:"rgba(255,255,255,0.07)", borderHi:"rgba(255,255,255,0.13)",
   text:"#E2E2EC", muted:"#64647A", dim:"#38384A",
-  accent:"#C8A96E", danger:"#D4726A", success:"#7EC8A0",
+  accent:"#C8A96E", danger:"#D4726A", success:"#7EC8A0", warning:"#E2A84B",
 };
 
 const ACTION_CONFIG = {
-  add:    { label:"เพิ่ม",   icon:"plus",        color:"#7EC8A0" },
-  use:    { label:"ใช้",     icon:"minus",       color:"#D4726A" },
-  topup:  { label:"เติม",    icon:"arrow-up",    color:"#89A8D4" },
-  delete: { label:"ลบ",     icon:"trash-2",     color:"#7A7A8A" },
-  edit:   { label:"แก้ไข",  icon:"pencil",      color:"#C8A96E" },
+  add:    { label:"เพิ่ม",  color:"#7EC8A0" },
+  use:    { label:"ใช้",    color:"#D4726A" },
+  topup:  { label:"เติม",   color:"#89A8D4" },
+  delete: { label:"ลบ",    color:"#7A7A8A" },
+  edit:   { label:"แก้ไข", color:"#C8A96E" },
 };
 
-// ── Inline SVG icons (แทน lucide library) ──
-const PATHS = {
-  "beef":             "M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z",
-  "fish":             "M6.5 12s-3.5-2.5-3.5-6c0 0 3.5.5 6 3.5m8.5 2.5s3.5-2.5 3.5-6c0 0-3.5.5-6 3.5M12 12s-1-4 0-8c1 4 0 8 0 8M3 18s3-1 5-3M16 15s2 2 5 3",
-  "leaf":             "M17 8C8 10 5.9 16.17 3.82 19.82L5.71 21l1-1.93A4.49 4.49 0 0 0 8 20C12 20 16 16 17 8z",
-  "milk":             "M8 2h8l1 6H7L8 2zM7 8v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8",
-  "glass-water":      "M15.5 2H8.5L6 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-2.5-6zM9.5 14a2.5 2.5 0 0 1 5 0",
-  "flame-kindling":   "M12 2c0 6-6 8-6 14a6 6 0 0 0 12 0c0-6-6-8-6-14z",
-  "utensils-crossed": "M3 2l7 7M3 9l7-7M14.5 2L20 7.5 7.5 20 2 14.5 14.5 2zM20 20l-4-4",
-  "croissant":        "M12 2C8 2 4 5 4 9c0 5 4 9 8 11 4-2 8-6 8-11 0-4-4-7-8-7z",
-  "box":              "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8zM12 22V12M3.27 6.96 12 12.01l8.73-5.05M12 2v10",
-  "pencil":           "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
-  "x":                "M18 6 6 18M6 6l12 12",
-  "clock":            "M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3",
-  "plus":             "M12 5v14M5 12h14",
-  "minus":            "M5 12h14",
-  "arrow-up":         "M12 19V5M5 12l7-7 7 7",
-  "trash-2":          "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6",
-};
-
-function LucideIcon({ name, size=16, color="currentColor", style={} }) {
-  const d = PATHS[name];
-  if (!d) return null;
+// Modern minimal SVG icons — ถูกต้องตาม lucide spec
+const Icon = ({ n, s=16, c="currentColor", st={} }) => {
+  const icons = {
+    // category icons
+    "meat":    <><path d="M18.6 2.8a4.2 4.2 0 0 0-5.9 0L4.5 11a4.2 4.2 0 0 0 5.9 5.9l8.2-8.2a4.2 4.2 0 0 0 0-5.9z"/><line x1="9" y1="15" x2="16" y2="8"/></>,
+    "fish":    <><path d="M6.5 12C4 10 2 7.5 2 6c2 0 4.5 1 6.5 3"/><path d="M17.5 12C20 10 22 7.5 22 6c-2 0-4.5 1-6.5 3"/><path d="M6.5 12c0 2.5 2.5 5 5.5 6 3-1 5.5-3.5 5.5-6 0-2-2-4-5.5-4S6.5 10 6.5 12z"/><circle cx="16" cy="9" r="1" fill={c}/></>,
+    "leaf":    <><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></>,
+    "milk":    <><path d="M8 2h8"/><path d="M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2"/><path d="M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/></>,
+    "drink":   <><path d="M8 2h8l1 7H7z"/><path d="M7 9c0 5 2 9 5 9s5-4 5-9"/><line x1="12" y1="12" x2="12" y2="18"/></>,
+    "spice":   <><path d="M10.5 2.5a2.5 2.5 0 0 1 5 0"/><path d="M8 8h8"/><path d="M8.5 8C7 10 7 12 8 14l1 6h6l1-6c1-2 1-4-.5-6"/></>,
+    "box":     <><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></>,
+    "bread":   <><path d="M3 11.5a8.5 8.5 0 0 1 17 0"/><path d="M3 11.5V18a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-6.5"/><path d="M7 11.5V19"/><path d="M12 11.5V19"/><path d="M17 11.5V19"/></>,
+    "food":    <><path d="M3 11l19-9-9 19-2-8-8-2z"/></>,
+    // ui icons
+    "x":       <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    "plus":    <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    "minus":   <><line x1="5" y1="12" x2="19" y2="12"/></>,
+    "pencil":  <><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
+    "trash":   <><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></>,
+    "clock":   <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+    "refresh": <><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></>,
+    "arrow-up":<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>,
+    "warn":    <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    "check":   <><polyline points="20 6 9 17 4 12"/></>,
+    "chevron": <><polyline points="9 18 15 12 9 6"/></>,
+  };
+  const CAT_ICON_MAP = {"เนื้อสัตว์":"meat","ซีฟู้ด":"fish","ผัก":"leaf","นม/ไข่":"milk","เครื่องดื่ม":"drink","เครื่องปรุง":"spice","อาหารสำเร็จ":"food","เบเกอรี่":"bread","อื่นๆ":"box"};
+  const key = CAT_ICON_MAP[n] || n;
+  const content = icons[key];
+  if (!content) return null;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{display:"inline-block",flexShrink:0,...style}}>
-      <path d={d}/>
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none"
+      stroke={c} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+      style={{display:"inline-block",flexShrink:0,...st}}>
+      {content}
     </svg>
   );
-}
+};
 
 function genId() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
 
 function BottomSheet({ onClose, children, maxH }) {
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(14px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:T.elevated,borderTop:`1px solid ${T.borderHi}`,borderRadius:"20px 20px 0 0",padding:"28px 24px 44px",width:"100%",maxWidth:560,animation:"slideUp 0.28s cubic-bezier(.32,.72,0,1)",maxHeight:maxH||"80vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:T.elevated,borderTop:`1px solid ${T.borderHi}`,borderRadius:"20px 20px 0 0",padding:"28px 24px 44px",width:"100%",maxWidth:560,animation:"slideUp 0.28s cubic-bezier(.32,.72,0,1)",maxHeight:maxH||"80vh",overflowY:"auto"}}>
         {children}
       </div>
     </div>
   );
 }
 
-function InpStyle(extra={}) {
-  return {width:"100%",background:T.surface,border:`1px solid ${T.border}`,padding:"13px 14px",borderRadius:10,color:T.text,outline:"none",transition:"border-color 0.15s",...extra};
+function inp(extra={}) {
+  return {width:"100%",background:T.surface,border:`1px solid ${T.border}`,padding:"13px 14px",borderRadius:10,color:T.text,outline:"none",...extra};
 }
 
 function groupByDate(history) {
   const groups = {};
   history.forEach(h => {
     const d = new Date(h.at);
-    const today = new Date();
-    const yesterday = new Date(); yesterday.setDate(today.getDate()-1);
-    let label;
-    if (d.toDateString()===today.toDateString()) label = "วันนี้";
-    else if (d.toDateString()===yesterday.toDateString()) label = "เมื่อวาน";
-    else label = d.toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short"});
+    const today = new Date(); const yesterday = new Date(); yesterday.setDate(today.getDate()-1);
+    let label = d.toDateString()===today.toDateString() ? "วันนี้" : d.toDateString()===yesterday.toDateString() ? "เมื่อวาน" : d.toLocaleDateString("th-TH",{weekday:"short",day:"numeric",month:"short"});
     if (!groups[label]) groups[label] = [];
     groups[label].push(h);
   });
   return groups;
+}
+
+// ── Item Row (reusable) ──
+function ItemRow({ item, onTopUp, onUse, onEdit, onDelete, showUse=true }) {
+  const accent = CAT_ACCENT[item.category]||T.muted;
+  const empty  = item.qty === 0;
+  const low    = !empty && item.qty < 1;
+  const borderColor = empty ? T.danger : low ? T.warning : accent;
+  return (
+    <div className="row" style={{background:T.surface,borderLeft:`3px solid ${borderColor}`,padding:"13px 16px",display:"flex",alignItems:"center",gap:13,opacity:empty?0.6:1,transition:"opacity 0.2s"}}>
+      <div style={{width:36,height:36,borderRadius:9,flexShrink:0,background:`${borderColor}15`,border:`1px solid ${borderColor}22`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Icon n={empty?"x":item.category} c={borderColor} s={16}/>
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:2}}>
+          <span style={{fontSize:14,fontWeight:500,color:empty?T.muted:T.text,textDecoration:empty?"line-through":"none"}}>{item.name}</span>
+          {empty && <span style={{fontSize:9,color:T.danger,border:`1px solid ${T.danger}35`,padding:"1px 5px",borderRadius:4,fontFamily:"monospace",letterSpacing:"0.5px"}}>EMPTY</span>}
+          {low   && <span style={{fontSize:9,color:T.warning,border:`1px solid ${T.warning}35`,padding:"1px 5px",borderRadius:4,fontFamily:"monospace",letterSpacing:"0.5px"}}>LOW</span>}
+        </div>
+        <div style={{fontSize:12,color:borderColor,fontFamily:"monospace",fontWeight:500}}>{item.qty} {item.unit}</div>
+        {item.note&&<div style={{fontSize:11,color:T.muted,marginTop:3}}>{item.note}</div>}
+      </div>
+      <div className="acts" style={{display:"flex",gap:5,opacity:0.35,transition:"opacity 0.18s",flexShrink:0}}>
+        <button onClick={()=>onTopUp(item)} style={{background:`${T.success}15`,border:`1px solid ${T.success}28`,color:T.success,width:30,height:30,borderRadius:7,fontWeight:700,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon n="plus" s={13} c={T.success}/>
+        </button>
+        {showUse&&!empty&&<button onClick={()=>onUse(item)} style={{background:T.bg,border:`1px solid ${T.border}`,color:T.muted,padding:"0 10px",height:30,borderRadius:7,fontSize:12,cursor:"pointer"}}>ใช้</button>}
+        <button onClick={()=>onEdit(item)} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon n="pencil" s={12} c={T.muted}/>
+        </button>
+        <button onClick={()=>onDelete(item.id,item.name)} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,width:30,height:30,color:T.dim,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon n="x" s={12} c={T.dim}/>
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -120,7 +158,9 @@ function App() {
   const [loading,     setLoading]     = useState(true);
   const [showAdd,     setShowAdd]     = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [filterCat,   setFilterCat]  = useState("ทั้งหมด");
+  const [showEmpty,   setShowEmpty]   = useState(false);
+  const [showLow,     setShowLow]     = useState(false);
+  const [filterCat,   setFilterCat]   = useState("ทั้งหมด");
   const [search,      setSearch]      = useState("");
   const [useModal,    setUseModal]    = useState(null);
   const [useAmount,   setUseAmount]   = useState("");
@@ -132,7 +172,7 @@ function App() {
   const [toast,       setToast]       = useState(null);
   const [lastSync,    setLastSync]    = useState(null);
 
-  const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2800); };
+  const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(null),2800); };
   const addLog = (action, name, extra={}) => ({ id:genId(), at:new Date().toISOString(), action, name, ...extra });
 
   const loadItems = useCallback(async (showLoading=false) => {
@@ -149,11 +189,11 @@ function App() {
 
   const syncToSheet = async (nextItems, nextHistory) => {
     setItems(nextItems);
-    if (nextHistory) setHistory(nextHistory);
+    if (nextHistory !== undefined) setHistory(nextHistory);
     try {
-      await fetch(API_URL, { method:"POST", body:JSON.stringify({ action:"saveAll", items:nextItems, history:nextHistory }) });
+      await fetch(API_URL, { method:"POST", body:JSON.stringify({ action:"saveAll", items:nextItems, history:nextHistory||history }) });
       setLastSync(new Date());
-    } catch { showToast("บันทึกไม่สำเร็จ","err"); }
+    } catch { showToast("บันทึกไม่สำเร็จ"); }
   };
 
   useEffect(() => {
@@ -162,12 +202,15 @@ function App() {
     return ()=>clearInterval(t);
   }, [loadItems]);
 
+  const openTopUp = (item) => { setTopUpModal(item); setTopUpAmount(""); };
+  const openUse   = (item) => { setUseModal(item);   setUseAmount(""); };
+  const openEdit  = (item) => { setEditModal(item);  setEditForm({name:item.name,note:item.note||"",category:item.category}); };
+
   const handleAdd = () => {
     if (!form.name.trim()||!form.qty) return;
     const it = { id:genId(), name:form.name.trim(), qty:parseFloat(form.qty), unit:form.unit, category:form.category, note:form.note };
     const log = addLog("add", it.name, { amount:it.qty, unit:it.unit, category:it.category });
-    setShowAdd(false);
-    setForm({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
+    setShowAdd(false); setForm({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
     showToast(`เพิ่ม ${it.name} แล้ว`);
     syncToSheet([it,...items], [log,...history].slice(0,200));
   };
@@ -178,7 +221,7 @@ function App() {
     const nq  = Math.max(0, useModal.qty - amt);
     const log = addLog("use", useModal.name, { amount:amt, unit:useModal.unit });
     setUseModal(null); setUseAmount("");
-    showToast(nq===0 ? `${useModal.name} หมดแล้ว` : `ใช้ไป ${amt} ${useModal.unit}`, nq===0?"warn":"ok");
+    showToast(nq===0 ? `${useModal.name} หมดแล้ว` : `ใช้ไป ${amt} ${useModal.unit}`);
     syncToSheet(items.map(i=>i.id===useModal.id?{...i,qty:nq}:i), [log,...history].slice(0,200));
   };
 
@@ -193,254 +236,262 @@ function App() {
 
   const handleEditSave = () => {
     if (!editModal||!editForm.name.trim()) return;
-    const log = addLog("edit", editModal.name, { newName:editForm.name.trim(), note:editForm.note });
-    setEditModal(null);
-    showToast("แก้ไขแล้ว");
+    const log = addLog("edit", editModal.name, { newName:editForm.name.trim() });
+    setEditModal(null); showToast("แก้ไขแล้ว");
     syncToSheet(items.map(i=>i.id===editModal.id?{...i,name:editForm.name.trim(),note:editForm.note,category:editForm.category}:i), [log,...history].slice(0,200));
   };
 
   const handleDelete = (id, name) => {
-    if (!confirm(`ลบ "${name}" ออกจากรายการ?`)) return;
+    if (!confirm(`ลบ "${name}"?`)) return;
     const log = addLog("delete", name);
-    showToast(`ลบ ${name} ออกแล้ว`,"dim");
+    showToast(`ลบ ${name} ออกแล้ว`);
     syncToSheet(items.filter(i=>i.id!==id), [log,...history].slice(0,200));
   };
 
   const outOfStock = items.filter(i=>i.qty===0);
+  const lowStock   = items.filter(i=>i.qty>0&&i.qty<1);
   const filtered   = items
     .filter(i=>(filterCat==="ทั้งหมด"||i.category===filterCat)&&i.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>(a.qty===0?1:0)-(b.qty===0?1:0));
   const histGroups = groupByDate([...history]);
-  const inp = InpStyle();
+  const i = inp();
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,paddingBottom:60}}>
 
-      <header style={{position:"sticky",top:0,zIndex:100,background:`${T.bg}E8`,backdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,padding:"16px 20px"}}>
+      {/* Header */}
+      <header style={{position:"sticky",top:0,zIndex:100,background:`${T.bg}EE`,backdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,padding:"15px 20px"}}>
         <div style={{maxWidth:560,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <div style={{fontWeight:600,fontSize:16}}>❄︎&nbsp;&nbsp;ตู้เย็นครัว</div>
-            <div style={{fontSize:11,color:T.muted,marginTop:3}}>
-              {items.length} รายการ{outOfStock.length>0&&<span style={{color:T.danger}}> · หมด {outOfStock.length}</span>} · {lastSync?.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})||"—"}
+            <div style={{fontSize:11,color:T.muted,marginTop:2}}>
+              {items.length} รายการ
+              {outOfStock.length>0&&<span style={{color:T.danger}}> · หมด {outOfStock.length}</span>}
+              {lowStock.length>0&&<span style={{color:T.warning}}> · ใกล้หมด {lowStock.length}</span>}
+              {" · "}{lastSync?.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})||"—"}
             </div>
           </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowHistory(true)} className="icon-btn" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"8px 11px",color:T.muted,cursor:"pointer",display:"flex",alignItems:"center",transition:"border-color 0.15s,color 0.15s",position:"relative"}}>
-              <LucideIcon name="clock" size={15}/>
-              {history.length>0&&<span style={{position:"absolute",top:5,right:5,width:6,height:6,borderRadius:"50%",background:T.accent,display:"block"}}/>}
+          <div style={{display:"flex",gap:7}}>
+            <button onClick={()=>setShowHistory(true)} className="icon-btn" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,width:36,height:36,color:T.muted,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+              <Icon n="clock" s={15} c={T.muted}/>
+              {history.length>0&&<span style={{position:"absolute",top:6,right:6,width:5,height:5,borderRadius:"50%",background:T.accent}}/>}
             </button>
-            <button onClick={()=>loadItems(true)} className="icon-btn" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"8px 12px",color:T.muted,cursor:"pointer",transition:"border-color 0.15s,color 0.15s"}}>↻</button>
-            <button onClick={()=>setShowAdd(true)} style={{background:T.accent,border:"none",borderRadius:8,color:"#000",padding:"8px 18px",fontWeight:600,fontSize:13,cursor:"pointer"}}>+ เพิ่มของ</button>
+            <button onClick={()=>loadItems(true)} className="icon-btn" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,width:36,height:36,color:T.muted,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Icon n="refresh" s={15} c={T.muted}/>
+            </button>
+            <button onClick={()=>setShowAdd(true)} style={{background:T.accent,border:"none",borderRadius:8,color:"#000",padding:"0 16px",height:36,fontWeight:600,fontSize:13,cursor:"pointer"}}>+ เพิ่มของ</button>
           </div>
         </div>
       </header>
 
-      <main style={{maxWidth:560,margin:"0 auto",padding:"20px 16px"}}>
-        <div style={{position:"relative",marginBottom:16}}>
-          <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:T.dim,pointerEvents:"none",fontSize:15}}>⌕</span>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาของ..." style={{...inp,paddingLeft:38,borderRadius:12}}/>
-        </div>
+      <main style={{maxWidth:560,margin:"0 auto",padding:"18px 16px"}}>
 
-        <div className="no-scrollbar" style={{display:"flex",gap:8,overflowX:"auto",marginBottom:22}}>
+        {/* Search */}
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาของ..."
+          style={{...i,borderRadius:12,marginBottom:14,paddingLeft:16}}/>
+
+        {/* Category filter */}
+        <div className="no-scrollbar" style={{display:"flex",gap:7,overflowX:"auto",marginBottom:20}}>
           {["ทั้งหมด",...CATEGORIES].map(cat=>(
-            <button key={cat} onClick={()=>setFilterCat(cat)} style={{background:filterCat===cat?T.surface:"transparent",border:`1px solid ${filterCat===cat?T.borderHi:T.border}`,borderRadius:20,color:filterCat===cat?T.text:T.muted,padding:"5px 16px",whiteSpace:"nowrap",fontSize:12,cursor:"pointer",fontWeight:filterCat===cat?500:400,transition:"all 0.15s"}}>{cat}</button>
+            <button key={cat} onClick={()=>setFilterCat(cat)} style={{background:filterCat===cat?T.surface:"transparent",border:`1px solid ${filterCat===cat?T.borderHi:T.border}`,borderRadius:20,color:filterCat===cat?T.text:T.muted,padding:"5px 14px",whiteSpace:"nowrap",fontSize:12,cursor:"pointer",fontWeight:filterCat===cat?500:400}}>
+              {cat}
+            </button>
           ))}
         </div>
 
+        {/* ── Alert banners ── */}
         {outOfStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
-          <div style={{background:`${T.danger}12`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"14px 16px",marginBottom:18,animation:"up 0.25s ease"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div style={{fontSize:13,fontWeight:600,color:T.danger}}>หมดแล้ว {outOfStock.length} รายการ</div>
-              <button onClick={()=>{
-                const list = outOfStock.map(i=>`• ${i.name}`).join("\n");
-                navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อเพิ่ม:\n${list}`);
-                showToast("คัดลอกรายการแล้ว วางใน LINE ได้เลย");
-              }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"5px 12px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none"}}>📋 สรุปรายการ</button>
+          <button onClick={()=>setShowEmpty(true)} style={{width:"100%",background:`${T.danger}10`,border:`1px solid ${T.danger}28`,borderRadius:12,padding:"13px 16px",marginBottom:10,cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",animation:"up 0.25s ease"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:T.danger,marginBottom:4}}>🔴 หมดแล้ว {outOfStock.length} รายการ</div>
+              <div style={{fontSize:11,color:`${T.danger}80`}}>{outOfStock.slice(0,3).map(i=>i.name).join(" · ")}{outOfStock.length>3&&` +${outOfStock.length-3}`}</div>
             </div>
-            <div style={{fontSize:11,color:`${T.danger}90`,lineHeight:1.7}}>
-              {outOfStock.slice(0,5).map(i=>i.name).join(" · ")}
-              {outOfStock.length>5&&` ...และอีก ${outOfStock.length-5} รายการ`}
+            <Icon n="chevron" s={16} c={T.danger}/>
+          </button>
+        )}
+        {lowStock.length>0&&filterCat==="ทั้งหมด"&&!search&&(
+          <button onClick={()=>setShowLow(true)} style={{width:"100%",background:`${T.warning}10`,border:`1px solid ${T.warning}28`,borderRadius:12,padding:"13px 16px",marginBottom:16,cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",animation:"up 0.25s ease"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:T.warning,marginBottom:4}}>🟡 ใกล้จะหมด {lowStock.length} รายการ</div>
+              <div style={{fontSize:11,color:`${T.warning}80`}}>{lowStock.slice(0,3).map(i=>i.name).join(" · ")}{lowStock.length>3&&` +${lowStock.length-3}`}</div>
             </div>
-          </div>
+            <Icon n="chevron" s={16} c={T.warning}/>
+          </button>
         )}
 
+        {/* Main list */}
         {loading?(
           <div style={{textAlign:"center",color:T.dim,marginTop:60,fontSize:13}}>กำลังซิงค์...</div>
         ):filtered.length===0?(
-          <div style={{textAlign:"center",color:T.dim,marginTop:60,fontSize:13}}>
-            {search?"ไม่พบรายการที่ค้นหา":"ยังไม่มีของในตู้เย็น"}
-          </div>
+          <div style={{textAlign:"center",color:T.dim,marginTop:60,fontSize:13}}>{search?"ไม่พบรายการที่ค้นหา":"ยังไม่มีของในตู้เย็น"}</div>
         ):(
           <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${T.border}`}}>
-            {filtered.map((item,idx)=>{
-              const accent = CAT_ACCENT[item.category]||T.muted;
-              const empty  = item.qty===0;
-              return (
-                <div key={item.id} className="row" style={{background:T.surface,borderTop:idx>0?`1px solid ${T.border}`:"none",borderLeft:`3px solid ${empty?T.danger:accent}`,padding:"14px 16px",display:"flex",alignItems:"center",gap:14,opacity:empty?0.65:1,transition:"opacity 0.2s",animation:"up 0.2s ease"}}>
-                  <div style={{width:38,height:38,borderRadius:10,flexShrink:0,background:`${empty?T.danger:accent}15`,border:`1px solid ${empty?T.danger:accent}25`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    <LucideIcon name={empty?"x":CAT_ICON[item.category]||"box"} color={empty?T.danger:accent} size={17}/>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                      <span style={{fontSize:14,fontWeight:500,color:empty?T.muted:T.text,textDecoration:empty?"line-through":"none"}}>{item.name}</span>
-                      {empty&&<span style={{fontSize:9,color:T.danger,border:`1px solid ${T.danger}35`,padding:"1px 5px",borderRadius:4,fontFamily:"'DM Mono',monospace",letterSpacing:"0.5px"}}>EMPTY</span>}
-                    </div>
-                    <div style={{fontSize:12,color:empty?T.danger:accent,fontFamily:"'DM Mono',monospace",fontWeight:500}}>{empty?"0":item.qty} {item.unit}</div>
-                    {item.note&&<div style={{fontSize:11,color:T.muted,marginTop:4}}>{item.note}</div>}
-                  </div>
-                  <div className="acts" style={{display:"flex",gap:6,opacity:0.35,transition:"opacity 0.18s",flexShrink:0}}>
-                    <button onClick={()=>{setTopUpModal(item);setTopUpAmount("");}} style={{background:`${T.success}15`,border:`1px solid ${T.success}28`,color:T.success,padding:"5px 11px",borderRadius:7,fontWeight:700,fontSize:14,cursor:"pointer"}}>+</button>
-                    {!empty&&<button onClick={()=>{setUseModal(item);setUseAmount("");}} style={{background:T.elevated,border:`1px solid ${T.border}`,color:T.muted,padding:"5px 11px",borderRadius:7,fontSize:12,cursor:"pointer"}}>ใช้</button>}
-                    <button onClick={()=>{setEditModal(item);setEditForm({name:item.name,note:item.note||"",category:item.category});}} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>
-                      <LucideIcon name="pencil" size={13} color={T.muted}/>
-                    </button>
-                    <button onClick={()=>handleDelete(item.id,item.name)} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:7,padding:"5px 8px",color:T.dim,fontSize:13,cursor:"pointer",lineHeight:1}}>✕</button>
-                  </div>
-                </div>
-              );
-            })}
+            {filtered.map((item,idx)=>(
+              <div key={item.id} style={{borderTop:idx>0?`1px solid ${T.border}`:"none"}}>
+                <ItemRow item={item} onTopUp={openTopUp} onUse={openUse} onEdit={openEdit} onDelete={handleDelete}/>
+              </div>
+            ))}
           </div>
         )}
       </main>
 
+      {/* ── Empty stock sheet ── */}
+      {showEmpty&&(
+        <BottomSheet onClose={()=>setShowEmpty(false)} maxH="88vh">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:600,color:T.danger}}>หมดแล้ว {outOfStock.length} รายการ</div>
+              <div style={{fontSize:11,color:T.muted,marginTop:3}}>กด + เพื่อเติมสต็อกได้เลย</div>
+            </div>
+            <button onClick={()=>{
+              const list = outOfStock.map(i=>`• ${i.name}`).join("\n");
+              navigator.clipboard.writeText(`🛒 รายการที่ต้องซื้อ:\n${list}`);
+              showToast("คัดลอกรายการแล้ว");
+            }} style={{fontSize:11,background:T.danger,color:"#fff",padding:"6px 14px",borderRadius:8,fontWeight:600,cursor:"pointer",border:"none"}}>
+              📋 คัดลอก
+            </button>
+          </div>
+          <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${T.border}`}}>
+            {outOfStock.map((item,idx)=>(
+              <div key={item.id} style={{borderTop:idx>0?`1px solid ${T.border}`:"none"}}>
+                <ItemRow item={item} onTopUp={(it)=>{setShowEmpty(false);openTopUp(it);}} onUse={openUse} onEdit={(it)=>{setShowEmpty(false);openEdit(it);}} onDelete={handleDelete} showUse={false}/>
+              </div>
+            ))}
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ── Low stock sheet ── */}
+      {showLow&&(
+        <BottomSheet onClose={()=>setShowLow(false)} maxH="88vh">
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:15,fontWeight:600,color:T.warning}}>ใกล้จะหมด {lowStock.length} รายการ</div>
+            <div style={{fontSize:11,color:T.muted,marginTop:3}}>รายการที่เหลือน้อยกว่า 1 หน่วย</div>
+          </div>
+          <div style={{borderRadius:10,overflow:"hidden",border:`1px solid ${T.border}`}}>
+            {lowStock.map((item,idx)=>(
+              <div key={item.id} style={{borderTop:idx>0?`1px solid ${T.border}`:"none"}}>
+                <ItemRow item={item} onTopUp={(it)=>{setShowLow(false);openTopUp(it);}} onUse={openUse} onEdit={(it)=>{setShowLow(false);openEdit(it);}} onDelete={handleDelete}/>
+              </div>
+            ))}
+          </div>
+        </BottomSheet>
+      )}
+
+      {/* ── History sheet ── */}
       {showHistory&&(
         <BottomSheet onClose={()=>setShowHistory(false)} maxH="88vh">
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
             <div>
-              <div style={{fontSize:15,fontWeight:600,color:T.text}}>ประวัติการใช้งาน</div>
+              <div style={{fontSize:15,fontWeight:600}}>ประวัติการใช้งาน</div>
               <div style={{fontSize:11,color:T.muted,marginTop:3}}>{history.length} รายการล่าสุด</div>
             </div>
-            {history.length>0&&(
-              <button onClick={()=>{if(confirm("ล้างประวัติทั้งหมด?"))syncToSheet(items,[]);}} style={{fontSize:11,color:T.muted,background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>ล้างประวัติ</button>
-            )}
+            {history.length>0&&<button onClick={()=>{if(confirm("ล้างประวัติ?"))syncToSheet(items,[]);}} style={{fontSize:11,color:T.muted,background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>ล้างประวัติ</button>}
           </div>
           {history.length===0?(
-            <div style={{textAlign:"center",color:T.dim,padding:"40px 0",fontSize:13}}>
-              <LucideIcon name="clock" size={32} color={T.dim} style={{display:"block",margin:"0 auto 12px"}}/>
-              ยังไม่มีประวัติการใช้งาน
-            </div>
+            <div style={{textAlign:"center",color:T.dim,padding:"40px 0",fontSize:13}}>ยังไม่มีประวัติ</div>
           ):(
-            <div style={{display:"flex",flexDirection:"column",gap:0}}>
-              {Object.entries(histGroups).map(([dateLabel, entries])=>(
-                <div key={dateLabel}>
-                  <div style={{fontSize:11,color:T.muted,fontWeight:600,letterSpacing:"0.5px",padding:"16px 0 8px",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`}}>{dateLabel}</div>
-                  {entries.map((h,i)=>{
-                    const cfg = ACTION_CONFIG[h.action]||ACTION_CONFIG.edit;
-                    return (
-                      <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 0",borderBottom:i<entries.length-1?`1px solid ${T.border}`:"none",animation:"up 0.2s ease"}}>
-                        <div style={{width:32,height:32,borderRadius:8,flexShrink:0,background:`${cfg.color}15`,border:`1px solid ${cfg.color}28`,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>
-                          <LucideIcon name={cfg.icon} size={14} color={cfg.color}/>
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-                            <span style={{fontSize:10,fontWeight:600,letterSpacing:"0.5px",color:cfg.color,border:`1px solid ${cfg.color}35`,borderRadius:4,padding:"1px 6px",fontFamily:"'DM Mono',monospace"}}>{cfg.label}</span>
-                            <span style={{fontSize:13,fontWeight:500,color:T.text}}>{h.name}</span>
-                            {h.newName&&h.newName!==h.name&&<span style={{fontSize:12,color:T.muted}}>→ {h.newName}</span>}
-                          </div>
-                          {h.amount!=null&&(
-                            <div style={{fontSize:12,color:T.muted,marginTop:3,fontFamily:"'DM Mono',monospace"}}>
-                              {h.action==="use"?"-":"+"}{h.amount} {h.unit}
-                              {h.action==="add"&&h.category&&<span style={{color:CAT_ACCENT[h.category]||T.dim,marginLeft:8,fontFamily:"'DM Sans',sans-serif",fontSize:11}}>{h.category}</span>}
-                            </div>
-                          )}
-                          {h.note&&h.action==="edit"&&<div style={{fontSize:11,color:T.dim,marginTop:3}}>หมายเหตุ: {h.note}</div>}
-                        </div>
-                        <div style={{fontSize:11,color:T.dim,whiteSpace:"nowrap",flexShrink:0,marginTop:2,fontFamily:"'DM Mono',monospace"}}>
-                          {new Date(h.at).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}
-                        </div>
+            Object.entries(histGroups).map(([dateLabel,entries])=>(
+              <div key={dateLabel}>
+                <div style={{fontSize:11,color:T.muted,fontWeight:600,padding:"14px 0 8px",borderBottom:`1px solid ${T.border}`,marginBottom:0,letterSpacing:"0.5px"}}>{dateLabel}</div>
+                {entries.map((h,idx)=>{
+                  const cfg = ACTION_CONFIG[h.action]||ACTION_CONFIG.edit;
+                  return (
+                    <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:11,padding:"11px 0",borderBottom:idx<entries.length-1?`1px solid ${T.border}`:"none"}}>
+                      <div style={{width:30,height:30,borderRadius:7,flexShrink:0,background:`${cfg.color}15`,border:`1px solid ${cfg.color}25`,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>
+                        <span style={{fontSize:10,fontWeight:700,color:cfg.color}}>{cfg.label[0]}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontSize:10,fontWeight:600,color:cfg.color,border:`1px solid ${cfg.color}30`,borderRadius:4,padding:"1px 6px",fontFamily:"monospace"}}>{cfg.label}</span>
+                          <span style={{fontSize:13,fontWeight:500}}>{h.name}</span>
+                          {h.newName&&h.newName!==h.name&&<span style={{fontSize:12,color:T.muted}}>→ {h.newName}</span>}
+                        </div>
+                        {h.amount!=null&&<div style={{fontSize:12,color:T.muted,marginTop:2,fontFamily:"monospace"}}>{h.action==="use"?"-":"+"}{h.amount} {h.unit}</div>}
+                      </div>
+                      <div style={{fontSize:11,color:T.dim,flexShrink:0,fontFamily:"monospace",marginTop:2}}>{new Date(h.at).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
           )}
         </BottomSheet>
       )}
 
+      {/* ── Add sheet ── */}
       {showAdd&&(
         <BottomSheet onClose={()=>setShowAdd(false)}>
-          <div style={{fontSize:15,fontWeight:600,marginBottom:20}}>เพิ่มของใหม่</div>
+          <div style={{fontSize:15,fontWeight:600,marginBottom:18}}>เพิ่มของใหม่</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <input placeholder="ชื่อของ เช่น หมูสามชั้น ไข่ไก่" autoFocus onChange={e=>setForm({...form,name:e.target.value})} style={inp}/>
+            <input placeholder="ชื่อของ เช่น หมูสามชั้น ไข่ไก่" autoFocus onChange={e=>setForm({...form,name:e.target.value})} style={i}/>
             <div style={{display:"flex",gap:10}}>
-              <input placeholder="จำนวน" type="number" onChange={e=>setForm({...form,qty:e.target.value})} style={{...inp,flex:1}}/>
-              <select value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})} style={{...inp,flex:1}}>
-                {UNITS.map(u=><option key={u}>{u}</option>)}
-              </select>
+              <input placeholder="จำนวน" type="number" onChange={e=>setForm({...form,qty:e.target.value})} style={{...i,flex:1}}/>
+              <select value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})} style={{...i,flex:1}}>{UNITS.map(u=><option key={u}>{u}</option>)}</select>
             </div>
-            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inp}>
-              {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-            </select>
-            <input placeholder="หมายเหตุ (ถ้ามี)" onChange={e=>setForm({...form,note:e.target.value})} style={inp}/>
-            <button onClick={handleAdd} style={{background:T.accent,border:"none",borderRadius:10,color:"#000",padding:14,fontWeight:600,fontSize:14,cursor:"pointer",marginTop:6}}>บันทึกรายการ</button>
+            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={i}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
+            <input placeholder="หมายเหตุ (ถ้ามี)" onChange={e=>setForm({...form,note:e.target.value})} style={i}/>
+            <button onClick={handleAdd} style={{background:T.accent,border:"none",borderRadius:10,color:"#000",padding:14,fontWeight:600,fontSize:14,cursor:"pointer",marginTop:4}}>บันทึกรายการ</button>
           </div>
         </BottomSheet>
       )}
 
+      {/* ── TopUp sheet ── */}
       {topUpModal&&(
         <BottomSheet onClose={()=>setTopUpModal(null)}>
-          <div style={{marginBottom:20}}>
-            <div style={{fontSize:10,color:T.muted,letterSpacing:"1.2px",textTransform:"uppercase",marginBottom:6}}>เติมสต็อก</div>
+          <div style={{marginBottom:18}}>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"1px",textTransform:"uppercase",marginBottom:5}}>เติมสต็อก</div>
             <div style={{fontSize:20,fontWeight:600}}>{topUpModal.name}</div>
-            <div style={{fontSize:12,color:T.muted,marginTop:4,fontFamily:"'DM Mono',monospace"}}>ปัจจุบัน {topUpModal.qty} {topUpModal.unit}</div>
+            <div style={{fontSize:12,color:T.muted,marginTop:3,fontFamily:"monospace"}}>ปัจจุบัน {topUpModal.qty} {topUpModal.unit}</div>
           </div>
-          <input type="number" placeholder={`เติมเพิ่ม (${topUpModal.unit})`} autoFocus value={topUpAmount} onChange={e=>setTopUpAmount(e.target.value)} style={{...inp,marginBottom:topUpAmount?8:16}}/>
-          {topUpAmount&&<div style={{fontSize:12,color:T.success,marginBottom:14,fontFamily:"'DM Mono',monospace"}}>→ รวมทั้งหมด {topUpModal.qty+parseFloat(topUpAmount||0)} {topUpModal.unit}</div>}
+          <input type="number" placeholder={`เติมเพิ่ม (${topUpModal.unit})`} autoFocus value={topUpAmount} onChange={e=>setTopUpAmount(e.target.value)} style={{...i,marginBottom:topUpAmount?8:14}}/>
+          {topUpAmount&&<div style={{fontSize:12,color:T.success,marginBottom:12,fontFamily:"monospace"}}>→ รวม {topUpModal.qty+parseFloat(topUpAmount||0)} {topUpModal.unit}</div>}
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>setTopUpModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
-            <button onClick={handleTopUp} disabled={!topUpAmount} style={{flex:2,background:topUpAmount?T.success:"rgba(126,200,160,0.15)",border:"none",borderRadius:10,color:topUpAmount?"#000":"#3A6A50",padding:13,fontWeight:600,cursor:topUpAmount?"pointer":"default"}}>เติม</button>
+            <button onClick={handleTopUp} disabled={!topUpAmount} style={{flex:2,background:topUpAmount?T.success:"rgba(126,200,160,0.12)",border:"none",borderRadius:10,color:topUpAmount?"#000":"#3A6A50",padding:13,fontWeight:600,cursor:topUpAmount?"pointer":"default"}}>เติม</button>
           </div>
         </BottomSheet>
       )}
 
+      {/* ── Use sheet ── */}
       {useModal&&(
         <BottomSheet onClose={()=>setUseModal(null)}>
-          <div style={{marginBottom:20}}>
-            <div style={{fontSize:10,color:T.muted,letterSpacing:"1.2px",textTransform:"uppercase",marginBottom:6}}>นำออกใช้</div>
+          <div style={{marginBottom:18}}>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"1px",textTransform:"uppercase",marginBottom:5}}>นำออกใช้</div>
             <div style={{fontSize:20,fontWeight:600}}>{useModal.name}</div>
-            <div style={{fontSize:12,color:T.muted,marginTop:4,fontFamily:"'DM Mono',monospace"}}>คงเหลือ {useModal.qty} {useModal.unit}</div>
+            <div style={{fontSize:12,color:T.muted,marginTop:3,fontFamily:"monospace"}}>คงเหลือ {useModal.qty} {useModal.unit}</div>
           </div>
-          <input type="number" placeholder={`ใช้ไปเท่าไหร่ (${useModal.unit})`} autoFocus value={useAmount} onChange={e=>setUseAmount(e.target.value)} style={{...inp,marginBottom:16}}/>
+          <input type="number" placeholder={`ใช้ไปเท่าไหร่ (${useModal.unit})`} autoFocus value={useAmount} onChange={e=>setUseAmount(e.target.value)} style={{...i,marginBottom:14}}/>
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>setUseModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
-            <button onClick={handleUse} disabled={!useAmount} style={{flex:2,background:useAmount?T.danger:"rgba(212,114,106,0.15)",border:"none",borderRadius:10,color:useAmount?"#fff":"#6A3030",padding:13,fontWeight:600,cursor:useAmount?"pointer":"default"}}>ยืนยัน</button>
+            <button onClick={handleUse} disabled={!useAmount} style={{flex:2,background:useAmount?T.danger:"rgba(212,114,106,0.12)",border:"none",borderRadius:10,color:useAmount?"#fff":"#6A3030",padding:13,fontWeight:600,cursor:useAmount?"pointer":"default"}}>ยืนยัน</button>
           </div>
         </BottomSheet>
       )}
 
+      {/* ── Edit sheet ── */}
       {editModal&&(
         <BottomSheet onClose={()=>setEditModal(null)}>
-          <div style={{marginBottom:20}}>
-            <div style={{fontSize:10,color:T.muted,letterSpacing:"1.2px",textTransform:"uppercase",marginBottom:6}}>แก้ไขรายการ</div>
+          <div style={{marginBottom:18}}>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"1px",textTransform:"uppercase",marginBottom:5}}>แก้ไขรายการ</div>
             <div style={{fontSize:20,fontWeight:600}}>{editModal.name}</div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div>
-              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>ชื่อรายการ</div>
-              <input value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})} autoFocus style={inp}/>
-            </div>
-            <div>
-              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมวดหมู่</div>
-              <select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={inp}>
-                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{fontSize:11,color:T.muted,marginBottom:6}}>หมายเหตุ</div>
-              <textarea value={editForm.note} onChange={e=>setEditForm({...editForm,note:e.target.value})} placeholder="เช่น วันหมดอายุ วิธีเก็บ แหล่งที่มา..." rows={3} style={{...inp,resize:"none",lineHeight:1.6}}/>
-            </div>
+            <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>ชื่อรายการ</div><input value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})} autoFocus style={i}/></div>
+            <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>หมวดหมู่</div><select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={i}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+            <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>หมายเหตุ</div><textarea value={editForm.note} onChange={e=>setEditForm({...editForm,note:e.target.value})} placeholder="วันหมดอายุ วิธีเก็บ..." rows={3} style={{...i,resize:"none",lineHeight:1.6}}/></div>
             <div style={{display:"flex",gap:10,marginTop:4}}>
               <button onClick={()=>setEditModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
-              <button onClick={handleEditSave} disabled={!editForm.name.trim()} style={{flex:2,background:editForm.name.trim()?T.accent:"rgba(200,169,110,0.2)",border:"none",borderRadius:10,color:editForm.name.trim()?"#000":"#6B5A30",padding:13,fontWeight:600,cursor:editForm.name.trim()?"pointer":"default"}}>บันทึก</button>
+              <button onClick={handleEditSave} disabled={!editForm.name.trim()} style={{flex:2,background:editForm.name.trim()?T.accent:"rgba(200,169,110,0.15)",border:"none",borderRadius:10,color:editForm.name.trim()?"#000":"#6B5A30",padding:13,fontWeight:600,cursor:editForm.name.trim()?"pointer":"default"}}>บันทึก</button>
             </div>
           </div>
         </BottomSheet>
       )}
 
+      {/* Toast */}
       {toast&&(
-        <div style={{position:"fixed",bottom:25,left:"50%",transform:"translateX(-50%)",background:T.elevated,border:`1px solid ${T.borderHi}`,padding:"11px 22px",borderRadius:30,fontSize:13,zIndex:300,whiteSpace:"nowrap",boxShadow:"0 8px 40px rgba(0,0,0,0.6)",animation:"up 0.2s ease"}}>
-          {toast.msg}
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:T.elevated,border:`1px solid ${T.borderHi}`,padding:"10px 22px",borderRadius:30,fontSize:13,zIndex:300,whiteSpace:"nowrap",boxShadow:"0 8px 40px rgba(0,0,0,0.6)",animation:"up 0.2s ease"}}>
+          {toast}
         </div>
       )}
     </div>
