@@ -35,7 +35,7 @@ const SUPABASE_KEY = "sb_publishable_x5Li82tQRPoiKP55IrNlvA_mNypDvDz";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const CATEGORIES = ["เนื้อสัตว์","ซีฟู้ด","ผัก","นม/ไข่","เครื่องดื่ม","เครื่องปรุง","อาหารสำเร็จ","เบเกอรี่","อื่นๆ"];
-const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค"];
+const UNITS = ["กก.","กรัม","ลิตร","มล.","ชิ้น","กล่อง","ถุง","ขวด","แถว","แพ็ค","กระป๋อง","แกลลอน"];
 const CAT_ACCENT = {"เนื้อสัตว์":"#D4846A","ซีฟู้ด":"#6ABED4","ผัก":"#7EC8A0","นม/ไข่":"#D4C896","เครื่องดื่ม":"#89A8D4","เครื่องปรุง":"#D4A06A","อาหารสำเร็จ":"#B49AD4","เบเกอรี่":"#E2B47F","อื่นๆ":"#7A7A8A"};
 
 const T = {
@@ -175,7 +175,7 @@ function App() {
   const [topUpModal,  setTopUpModal]  = useState(null);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [editModal,   setEditModal]   = useState(null);
-  const [editForm,    setEditForm]    = useState({name:"",note:"",category:""});
+  const [editForm,    setEditForm]    = useState({name:"",note:"",category:"",unit:""});
   const [form,        setForm]        = useState({name:"",qty:"",unit:"กก.",category:"เนื้อสัตว์",note:""});
   const [toast,       setToast]       = useState(null);
   const [lastSync,    setLastSync]    = useState(null);
@@ -212,7 +212,7 @@ function App() {
 
   const openTopUp = (item) => { setTopUpModal(item); setTopUpAmount(""); };
   const openUse   = (item) => { setUseModal(item);   setUseAmount(""); };
-  const openEdit  = (item) => { setEditModal(item);  setEditForm({name:item.name,note:item.note||"",category:item.category}); };
+  const openEdit  = (item) => { setEditModal(item);  setEditForm({name:item.name,note:item.note||"",category:item.category,unit:item.unit}); };
 
   const handleAdd = async () => {
     if (!form.name.trim()||!form.qty) return;
@@ -251,11 +251,11 @@ function App() {
 
   const handleEditSave = async () => {
     if (!editModal||!editForm.name.trim()) return;
-    const patch = { name:editForm.name.trim(), note:editForm.note, category:editForm.category };
+    const patch = { name:editForm.name.trim(), note:editForm.note, category:editForm.category, unit:editForm.unit };
     const { error } = await sb.from("fridge_items").update(patch).eq("id", editModal.id);
     if (error) { showToast("บันทึกไม่สำเร็จ"); return; }
     setItems(prev=>prev.map(i=>i.id===editModal.id?{...i,...patch}:i));
-    addLog("edit", editModal.name, { newName:editForm.name.trim() });
+    addLog("edit", editModal.name, { newName:editForm.name.trim(), newUnit:editForm.unit!==editModal.unit?editForm.unit:undefined });
     setEditModal(null); showToast("แก้ไขแล้ว");
   };
 
@@ -488,6 +488,7 @@ function App() {
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>ชื่อรายการ</div><input value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})} autoFocus style={is}/></div>
             <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>หมวดหมู่</div><select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})} style={is}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+            <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>หน่วยนับ</div><select value={editForm.unit} onChange={e=>setEditForm({...editForm,unit:e.target.value})} style={is}>{UNITS.map(u=><option key={u}>{u}</option>)}</select></div>
             <div><div style={{fontSize:11,color:T.muted,marginBottom:5}}>หมายเหตุ</div><textarea value={editForm.note} onChange={e=>setEditForm({...editForm,note:e.target.value})} placeholder="วันหมดอายุ วิธีเก็บ..." rows={3} style={{...is,resize:"none",lineHeight:1.6}}/></div>
             <div style={{display:"flex",gap:10,marginTop:4}}>
               <button onClick={()=>setEditModal(null)} style={{flex:1,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,padding:13,cursor:"pointer"}}>ยกเลิก</button>
